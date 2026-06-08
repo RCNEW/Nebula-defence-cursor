@@ -1,2 +1,2 @@
 # Nebula defence cursor
-Phaser towe defence game
+Phaser tower defence game
