@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NEBULA DEFENSE — Space Tower Defense</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Courier New', monospace;
+    }
+
+    #game-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@4.1.0/dist/phaser.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/systems/EnemySystem.js"></script>
+  <script src="js/systems/DefenseSystem.js"></script>
+  <script src="js/systems/SpecialActionSystem.js"></script>
+  <script src="js/systems/UISystem.js"></script>
+  <script src="js/systems/WaveSystem.js"></script>
+  <script src="js/systems/LayoutSystem.js"></script>
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/GameScene.js"></script>
+  <script src="js/scenes/UIScene.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
