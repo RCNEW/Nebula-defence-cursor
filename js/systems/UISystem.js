@@ -57,6 +57,7 @@ class UISystem {
 
   _buildWaveDisplay() {
     const L = this._L();
+
     this.elements.waveText = this.scene.add.text(L.WAVE_X, L.WAVE_Y, 'Wave 0', {
       fontSize: `${Math.round(28 * L.sy)}px`, fill: '#ff44ff',
       fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
@@ -68,6 +69,14 @@ class UISystem {
         fontFamily: CONFIG.THEME.FONT_MAIN,
       }
     ).setOrigin(1, 0).setDepth(70);
+
+    // Vijandenteller
+    this.elements.enemiesText = this.scene.add.text(
+      L.WAVE_X, L.WAVE_Y + Math.round(62 * L.sy), '', {
+        fontSize: `${Math.round(15 * L.sy)}px`, fill: '#ffaa00',
+        fontFamily: CONFIG.THEME.FONT_MAIN,
+      }
+    ).setOrigin(1, 0).setDepth(70).setVisible(false);
   }
 
   updateWaveDisplay(n) { this.elements.waveText?.setText(`Wave ${n}`); }
@@ -75,14 +84,25 @@ class UISystem {
     this.elements.countdownText?.setText(ms > 0 ? `Volgende wave: ${(ms/1000).toFixed(1)}s` : '');
   }
 
+  updateEnemiesRemaining(remaining) {
+    const el = this.elements.enemiesText;
+    if (!el) return;
+    if (remaining === null || remaining === undefined) {
+      el.setVisible(false);
+    } else {
+      el.setText(`Enemies: ${remaining}`).setVisible(true);
+    }
+  }
+
   showWaveAnnouncement(wave, count) {
     if (this.elements.announcement) this.elements.announcement.destroy();
     const L = this._L();
     const txt = this.scene.add.text(L.W / 2, Math.round(120 * L.sy),
-      `Wave ${wave} — ${count} vijanden!`, {
+      `Wave ${wave}\n${count} enemies!`, {
         fontSize: `${Math.round(30 * L.sy)}px`, fill: '#ff44ff',
         fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
         stroke: '#000', strokeThickness: 4,
+        align: 'center',
       }
     ).setOrigin(0.5).setDepth(200).setAlpha(0);
 
@@ -207,7 +227,6 @@ class UISystem {
     });
 
     this.updateCubeButtons();
-
     this._setupCubeKeyHandlers();
   }
 
@@ -633,28 +652,88 @@ class UISystem {
     onDone?.();
   }
 
+  // ── GAME OVER ─────────────────────────────────────────────
   showGameOver(score, wave) {
     const L = this._L();
     const W = L.W, H = L.H;
-    this.scene.add.rectangle(W/2, H/2, W, H, 0x000000, 0.85).setDepth(400);
-    this.scene.add.text(W/2, H/2 - Math.round(120 * L.sy), 'GAME OVER', {
-      fontSize: `${Math.round(80 * L.sy)}px`, fill: '#ff2222',
-      fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
-      stroke: '#000', strokeThickness: 6,
-    }).setOrigin(0.5).setDepth(401);
+    const cx = W / 2;
+    const cy = H / 2;
 
-    this.scene.add.text(W/2, H/2 + Math.round(20 * L.sy),
-      `Wave bereikt: ${wave}\nScore: ${score}`, {
-        fontSize: `${Math.round(26 * L.sy)}px`, fill: '#aaddff',
+    // Donker overlay
+    this.scene.add.rectangle(cx, cy, W, H, 0x000000, 0.88).setDepth(400);
+
+    // Rode gloed achter de titel
+    const glow = this.scene.add.graphics().setDepth(401);
+    glow.fillStyle(0xff0000, 0.08);
+    glow.fillCircle(cx, cy - Math.round(80 * L.sy), Math.round(300 * L.s));
+
+    // Titel
+    this.scene.add.text(cx, cy - Math.round(160 * L.sy), 'GAME OVER', {
+      fontSize: `${Math.round(90 * L.sy)}px`,
+      fill: '#ff2222',
+      fontFamily: CONFIG.THEME.FONT_MAIN,
+      fontStyle: 'bold',
+      stroke: '#440000',
+      strokeThickness: 8,
+    }).setOrigin(0.5).setDepth(402);
+
+    // Score-paneel
+    const panelW = Math.round(420 * L.sx);
+    const panelH = Math.round(120 * L.sy);
+    const panelY = cy - Math.round(30 * L.sy);
+    const panelGfx = this.scene.add.graphics().setDepth(402);
+    panelGfx.fillStyle(0x0a1a2e, 0.92);
+    panelGfx.lineStyle(2, 0x334466, 0.9);
+    panelGfx.fillRoundedRect(cx - panelW / 2, panelY - panelH / 2, panelW, panelH, 10);
+    panelGfx.strokeRoundedRect(cx - panelW / 2, panelY - panelH / 2, panelW, panelH, 10);
+
+    this.scene.add.text(cx, panelY - Math.round(22 * L.sy),
+      `Wave bereikt: ${wave}`, {
+        fontSize: `${Math.round(22 * L.sy)}px`, fill: '#aaddff',
         fontFamily: CONFIG.THEME.FONT_MAIN, align: 'center',
       }
-    ).setOrigin(0.5).setDepth(401);
+    ).setOrigin(0.5).setDepth(403);
 
-    const bW = Math.round(200 * L.sx), bH = Math.round(56 * L.sy);
-    const btn = this._makeButton(W/2, H/2 + Math.round(140 * L.sy), bW, bH, '↺ OPNIEUW',
-      0x0a2040, 0x00aaff, Math.round(20 * L.sy));
-    btn.bg.setDepth(401); btn.label.setDepth(402);
-    btn.on('pointerdown', () => this.scene.scene.restart());
+    this.scene.add.text(cx, panelY + Math.round(22 * L.sy),
+      `Score: ${score}`, {
+        fontSize: `${Math.round(28 * L.sy)}px`, fill: '#ffff44',
+        fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold', align: 'center',
+      }
+    ).setOrigin(0.5).setDepth(403);
+
+    // Opnieuw-knop — groot, duidelijk, met hover-effect
+    const btnW = Math.round(300 * L.sx);
+    const btnH = Math.round(72 * L.sy);
+    const btnY = cy + Math.round(110 * L.sy);
+    const btnFs = Math.round(26 * L.sy);
+
+    const btnBg = this.scene.add.graphics().setDepth(403);
+    const drawBtn = (hovered) => {
+      btnBg.clear();
+      btnBg.fillStyle(hovered ? 0x0055cc : 0x003388, 0.97);
+      btnBg.lineStyle(3, hovered ? 0x44aaff : 0x0077ff, 1);
+      btnBg.fillRoundedRect(cx - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
+      btnBg.strokeRoundedRect(cx - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
+    };
+    drawBtn(false);
+
+    this.scene.add.text(cx, btnY, '↺  OPNIEUW SPELEN', {
+      fontSize: `${btnFs}px`, fill: '#ffffff',
+      fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(404);
+
+    // Onzichtbaar klikgebied over de knop
+    const btnHit = this.scene.add.rectangle(cx, btnY, btnW, btnH, 0xffffff, 0)
+      .setInteractive().setDepth(405);
+
+    btnHit.on('pointerover',  () => drawBtn(true));
+    btnHit.on('pointerout',   () => drawBtn(false));
+    btnHit.on('pointerdown',  () => {
+      // Stop UIScene en herstart GameScene volledig
+      this.scene.gameScene?.enemySystem?.clearAll();
+      this.scene.scene.stop('UIScene');
+      this.scene.gameScene?.scene.restart();
+    });
   }
 
   _makeButton(x, y, w, h, label, bgCol, borderCol, fontSize = 14) {

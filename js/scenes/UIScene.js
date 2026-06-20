@@ -16,7 +16,8 @@ class UIScene extends Phaser.Scene {
     // Proxy UISystem methods to this scene so GameScene can call this.uiScene.xxx()
     const methods = [
       'updateEnergyDisplay', 'updateShieldDisplay', 'updateScoreDisplay',
-      'updateWaveDisplay', 'updateWaveCountdown', 'showWaveAnnouncement',
+      'updateWaveDisplay', 'updateWaveCountdown', 'updateEnemiesRemaining',
+      'showWaveAnnouncement',
       'highlightSpeedBtn', 'showPausedIndicator',
       'updateCubeButtons', 'animateCubeRotation',
       'updateSpecialAction', 'updateSpecialActionTimer',
@@ -27,9 +28,9 @@ class UIScene extends Phaser.Scene {
     methods.forEach(m => { this[m] = (...args) => this.uiSystem[m]?.(...args); });
 
     // Forward system references so UISystem buttons can call back into game
-    this.defenseSystem     = this.gameScene.defenseSystem;
+    this.defenseSystem       = this.gameScene.defenseSystem;
     this.specialActionSystem = this.gameScene.specialActionSystem;
-    this.enemySystem       = this.gameScene.enemySystem;
+    this.enemySystem         = this.gameScene.enemySystem;
 
     // Signal GameScene that UI is ready (alleen bij eerste start)
     this.gameScene.events.emit('uiReady', this);
