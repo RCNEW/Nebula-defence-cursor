@@ -17,7 +17,7 @@ class UIScene extends Phaser.Scene {
     const methods = [
       'updateEnergyDisplay', 'updateShieldDisplay', 'updateScoreDisplay',
       'updateWaveDisplay', 'updateWaveCountdown', 'updateEnemiesRemaining',
-      'showWaveAnnouncement',
+      'showWaveAnnouncement', 'showWaveCompleted',
       'highlightSpeedBtn', 'showPausedIndicator',
       'updateCubeButtons', 'animateCubeRotation',
       'updateSpecialAction', 'updateSpecialActionTimer',

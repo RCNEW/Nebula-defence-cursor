@@ -636,20 +636,101 @@ class UISystem {
       });
     });
 
-    const skipBtn = this.scene.add.text(W/2, H/2 + Math.round(170 * L.sy),
-      '[ Overslaan ]', {
-        fontSize: `${Math.round(16 * L.sy)}px`, fill: '#446688',
-        fontFamily: CONFIG.THEME.FONT_MAIN,
-      }
-    ).setOrigin(0.5).setDepth(302).setInteractive();
-    skipBtn.on('pointerdown', () => this._closeUpgradeChoice(onDone));
+    // Overslaan-knop — zelfde stijl als "Opnieuw spelen"
+    const sbW = Math.round(240 * L.sx);
+    const sbH = Math.round(60 * L.sy);
+    const sbY = H/2 + Math.round(180 * L.sy);
+    const sbFs = Math.round(20 * L.sy);
+
+    const skipBg = this.scene.add.graphics().setDepth(302);
+    const drawSkip = (hovered) => {
+      skipBg.clear();
+      skipBg.fillStyle(hovered ? 0x1a3a1a : 0x0a1a0a, 0.97);
+      skipBg.lineStyle(3, hovered ? 0x44ff88 : 0x228844, 1);
+      skipBg.fillRoundedRect(W/2 - sbW/2, sbY - sbH/2, sbW, sbH, 12);
+      skipBg.strokeRoundedRect(W/2 - sbW/2, sbY - sbH/2, sbW, sbH, 12);
+    };
+    drawSkip(false);
+
+    this.scene.add.text(W/2, sbY, '» Overslaan', {
+      fontSize: `${sbFs}px`, fill: '#ffffff',
+      fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(303);
+
+    const skipHit = this.scene.add.rectangle(W/2, sbY, sbW, sbH, 0xffffff, 0)
+      .setInteractive().setDepth(304);
+    skipHit.on('pointerover',  () => drawSkip(true));
+    skipHit.on('pointerout',   () => drawSkip(false));
+    skipHit.on('pointerdown',  () => this._closeUpgradeChoice(onDone));
   }
 
   _closeUpgradeChoice(onDone) {
     this.scene.children.list
-      .filter(c => c.depth >= 300 && c.depth <= 303)
+      .filter(c => c.depth >= 300 && c.depth <= 304)
       .forEach(c => c.destroy());
     onDone?.();
+  }
+
+  // ── WAVE COMPLETED — fade + banner + pauze voor upgrade-scherm ──
+  showWaveCompleted(wave, onDone) {
+    const L = this._L();
+    const W = L.W, H = L.H;
+
+    // Lichte groene flash over het scherm
+    const flash = this.scene.add.rectangle(W/2, H/2, W, H, 0x00ff88, 0)
+      .setDepth(350);
+    this.scene.tweens.add({
+      targets: flash, alpha: 0.15, duration: 300, ease: 'Cubic.easeOut',
+      yoyo: true, hold: 200,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Banner achtergrond
+    const bannerH = Math.round(110 * L.sy);
+    const bannerY = H / 2;
+    const bannerBg = this.scene.add.graphics().setDepth(351).setAlpha(0);
+    bannerBg.fillStyle(0x020c1a, 0.92);
+    bannerBg.fillRoundedRect(W/2 - Math.round(380 * L.sx), bannerY - bannerH/2,
+      Math.round(760 * L.sx), bannerH, 14);
+    bannerBg.lineStyle(2, 0x00ff88, 0.8);
+    bannerBg.strokeRoundedRect(W/2 - Math.round(380 * L.sx), bannerY - bannerH/2,
+      Math.round(760 * L.sx), bannerH, 14);
+
+    // Tekst
+    const line1 = this.scene.add.text(W/2, bannerY - Math.round(22 * L.sy),
+      `Wave ${wave} completed!`, {
+        fontSize: `${Math.round(38 * L.sy)}px`, fill: '#00ff88',
+        fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
+        stroke: '#003322', strokeThickness: 5,
+      }
+    ).setOrigin(0.5).setDepth(352).setAlpha(0);
+
+    const line2 = this.scene.add.text(W/2, bannerY + Math.round(26 * L.sy),
+      'Kies een upgrade...', {
+        fontSize: `${Math.round(18 * L.sy)}px`, fill: '#88ddbb',
+        fontFamily: CONFIG.THEME.FONT_MAIN,
+      }
+    ).setOrigin(0.5).setDepth(352).setAlpha(0);
+
+    // Fade in
+    this.scene.tweens.add({
+      targets: [bannerBg, line1, line2], alpha: 1,
+      duration: 400, ease: 'Cubic.easeOut',
+    });
+
+    // Na 2 seconden: fade uit, dan upgrade-scherm
+    this.scene.time.delayedCall(2000, () => {
+      this.scene.tweens.add({
+        targets: [bannerBg, line1, line2], alpha: 0,
+        duration: 350, ease: 'Cubic.easeIn',
+        onComplete: () => {
+          bannerBg.destroy();
+          line1.destroy();
+          line2.destroy();
+          onDone?.();
+        },
+      });
+    });
   }
 
   // ── GAME OVER ─────────────────────────────────────────────

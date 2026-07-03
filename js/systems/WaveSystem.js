@@ -53,7 +53,6 @@ class WaveSystem {
     this.prepTimer = CONFIG.WAVES.PREP_TIME;
     const wave = this.currentWave + 1;
     this.scene.uiScene?.showWaveAnnouncement(wave, this.totalEnemiesThisWave);
-    // Verberg vijandenteller tijdens prep-fase
     this.scene.uiScene?.updateEnemiesRemaining(null);
   }
 
@@ -70,8 +69,6 @@ class WaveSystem {
 
     this.scene.uiScene?.showWaveAnnouncement(this.currentWave, this.totalEnemiesThisWave);
     this.scene.defenseSystem?.rotateCubes(false);
-
-    // Toon vijandenteller zodra wave begint
     this.scene.uiScene?.updateEnemiesRemaining(this.totalEnemiesThisWave);
   }
 
@@ -115,22 +112,25 @@ class WaveSystem {
   onEnemyKilled() {
     this.enemiesKilled++;
     if (this.state === 'active') {
-      // Remaining = vijanden nog in het veld + nog te spawnen
-      const activeCount  = this.scene.enemySystem.enemies.filter(e => e.active).length;
-      const toSpawn      = this.spawnQueue.length - this.enemiesSpawned;
-      const remaining    = activeCount + toSpawn;
+      const activeCount = this.scene.enemySystem.enemies.filter(e => e.active).length;
+      const toSpawn     = this.spawnQueue.length - this.enemiesSpawned;
+      const remaining   = activeCount + toSpawn;
       this.scene.uiScene?.updateEnemiesRemaining(remaining);
     }
   }
 
   _waveComplete() {
     this.state = 'waveDone';
-    // Verberg teller zodra wave voorbij is
     this.scene.uiScene?.updateEnemiesRemaining(null);
-    this.scene.uiScene?.showUpgradeChoice(() => {
-      this._beginNextWavePrepUI();
-      this.state = 'prep';
+
+    // Toon "Wave X completed" banner, wacht dan voor het upgrade-scherm
+    this.scene.uiScene?.showWaveCompleted(this.currentWave, () => {
+      this.scene.uiScene?.showUpgradeChoice(() => {
+        this._beginNextWavePrepUI();
+        this.state = 'prep';
+      });
     });
+
     this.scene.defenseSystem?.rotateCubes(true);
   }
 
