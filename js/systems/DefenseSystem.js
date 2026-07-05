@@ -721,6 +721,20 @@ class DefenseSystem {
     });
   }
 
+  // Nauwkeurigheid van een planeetverdediging: schaalt van baseAccuracy (bij
+  // plaatsing) naar maxAccuracy (bij de laatste upgrade). Alleen relevant voor
+  // defenses met een homing-projectiel (PLANET_DEFENSES); overige defenses
+  // hebben geen accuracy-config en raken dus altijd.
+  _getAccuracy(d) {
+    const base = d.cfg.baseAccuracy;
+    if (base == null) return 1;
+    const max = d.cfg.maxAccuracy ?? 1;
+    const maxLevel = (d.cfg.upgrades || []).length;
+    if (maxLevel <= 0) return base;
+    const t = Math.min(1, d.upgradeLevel / maxLevel);
+    return base + (max - base) * t;
+  }
+
   _fire(d) {
     const es = this.scene.enemySystem;
     const cat = d.category;
@@ -814,6 +828,20 @@ class DefenseSystem {
     const hitRadius = (target.cfg?.radius || 18) + 6
       + (d.key === 'laser' ? LASER_PACKET_LEN : 0);
 
+    // Nauwkeurigheid: bepaalt of dit schot raak is. Bij een misser vliegt het
+    // projectiel naar een vast punt net naast het doelwit i.p.v. continu te
+    // blijven homen — zo mist het zichtbaar in plaats van altijd te raken.
+    const accuracy = this._getAccuracy(d);
+    const isMiss = Math.random() >= accuracy;
+    let missX = null, missY = null;
+    if (isMiss) {
+      const M = CONFIG.GAME;
+      const missAngle = Math.random() * Math.PI * 2;
+      const missDist  = hitRadius + Phaser.Math.FloatBetween(M.MISS_OFFSET_MIN, M.MISS_OFFSET_MAX);
+      missX = target.container.x + Math.cos(missAngle) * missDist;
+      missY = target.container.y + Math.sin(missAngle) * missDist;
+    }
+
     const isNet = (d.key === 'netgun');
 
     if (isNet) {
@@ -834,19 +862,21 @@ class DefenseSystem {
     if (isMortar) {
       proj.clear();
       const sx = d.x, sy = d.y;
-      const totalDist = Phaser.Math.Distance.Between(sx, sy, target.container.x, target.container.y);
+      const endX = isMiss ? missX : target.container.x;
+      const endY = isMiss ? missY : target.container.y;
+      const totalDist = Phaser.Math.Distance.Between(sx, sy, endX, endY);
       const flightTime = (totalDist / baseProjSpeed) * 1000;
       const arcHeight = Math.max(80, totalDist * 0.35);
       mortarData = {
         sx, sy,
-        endX: target.container.x,
-        endY: target.container.y,
+        endX, endY,
         flightTime,
         elapsed: 0,
         arcHeight,
         trailPoints: [],
         TRAIL_LEN: 18,
         lostTarget: false,
+        missMode: isMiss,
       };
     }
 
@@ -875,6 +905,8 @@ class DefenseSystem {
       isRailgun,
       railgunTrail: isRailgun ? [] : null,
       isLaser,
+      forcedMiss: isMiss,
+      missX, missY,
     });
   }
 
@@ -889,7 +921,9 @@ class DefenseSystem {
         continue;
       }
 
-      if (!p.target.active) {
+      const missFlightFixed = p.forcedMiss || (p.isMortar && p.mortar.missMode);
+
+      if (!p.target.active && !missFlightFixed) {
         if (p.isMortar && !p.mortar.lostTarget) {
           if (this._mortarRetargetOnTargetLost(p)) {
             this.activeProjectiles.splice(i, 1);
@@ -903,14 +937,21 @@ class DefenseSystem {
       }
 
       if (!p.isMortar) {
-        const tx = p.target.container.x;
-        const ty = p.target.container.y;
+        const tx = p.forcedMiss ? p.missX : p.target.container.x;
+        const ty = p.forcedMiss ? p.missY : p.target.container.y;
         const dx = tx - p.gfx.x;
         const dy = ty - p.gfx.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const step = p.speed * gameSpeed * (delta / 1000);
 
         if (dist <= step + p.hitRadius) {
+          if (p.forcedMiss) {
+            this._missFX(tx, ty, p.defense.cfg.color || 0x888888);
+            p.gfx.destroy();
+            this.activeProjectiles.splice(i, 1);
+            continue;
+          }
+
           const es = this.scene.enemySystem;
 
           if (p.target.active) {
@@ -1007,9 +1048,9 @@ class DefenseSystem {
         m.elapsed += delta * gameSpeed;
         const t = Math.min(m.elapsed / m.flightTime, 1);
 
-        const etx = m.lostTarget ? m.endX : p.target.container.x;
-        const ety = m.lostTarget ? m.endY : p.target.container.y;
-        if (!m.lostTarget) {
+        const etx = (m.lostTarget || m.missMode) ? m.endX : p.target.container.x;
+        const ety = (m.lostTarget || m.missMode) ? m.endY : p.target.container.y;
+        if (!m.lostTarget && !m.missMode) {
           m.endX = etx;
           m.endY = ety;
         }
@@ -1050,7 +1091,7 @@ class DefenseSystem {
 
         const headDist = Phaser.Math.Distance.Between(newX, newY, etx, ety);
         if (t >= 1 || headDist <= p.hitRadius + 4) {
-          if (m.lostTarget) {
+          if (m.lostTarget || m.missMode) {
             this._mortarFadeOutFX(etx, ety, col, p.gfx);
           } else {
             this._mortarExplosionFX(etx, ety, col, p.splashRadius || 80);
@@ -1083,6 +1124,19 @@ class DefenseSystem {
     this.scene.tweens.add({
       targets: gfx, alpha: 0, scaleX: 2.5, scaleY: 2.5,
       duration: 180, ease: 'Cubic.easeOut',
+      onComplete: () => gfx.destroy(),
+    });
+  }
+
+  _missFX(x, y, color) {
+    const gfx = this.scene.add.graphics().setDepth(21);
+    gfx.setPosition(x, y);
+    gfx.lineStyle(2, color, 0.5);
+    gfx.lineBetween(-6, -6, 6, 6);
+    gfx.lineBetween(-6, 6, 6, -6);
+    this.scene.tweens.add({
+      targets: gfx, alpha: 0, scaleX: 1.8, scaleY: 1.8,
+      duration: 220, ease: 'Cubic.easeOut',
       onComplete: () => gfx.destroy(),
     });
   }
