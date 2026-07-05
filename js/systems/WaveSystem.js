@@ -22,8 +22,8 @@ class WaveSystem {
   startGame() {
     this.currentWave = 0;
     this.state = 'prep';
-    this.prepTimer = 1500;
-    this._beginNextWavePrepUI();
+    this.prepTimer = CONFIG.WAVES.PREP_TIME;
+    this.scene.uiScene?.updateEnemiesRemaining(null);
   }
 
   update(delta) {

@@ -9,7 +9,7 @@ const CONFIG = {
   GAME: {
     WIDTH: 1920,
     HEIGHT: 1080,
-    TEST_MODE: true,           // true = unlimited energy & no shield damage
+    TEST_MODE: false,           // true = unlimited energy & no shield damage
     INITIAL_ENERGY: 150,
     INITIAL_SHIELD: 100,       // percentage (TEST_MODE overrides to 50)
     SHIELD_MAX: 100,
@@ -23,6 +23,10 @@ const CONFIG = {
     RESTART_KEY: 'R_RESTART',  // handled manually to avoid conflict
     MISS_OFFSET_MIN: 20,       // px — kleinste afwijking van een gemist projectiel t.o.v. het doelwit
     MISS_OFFSET_MAX: 70,       // px — grootste afwijking van een gemist projectiel t.o.v. het doelwit
+    INSTANT_KILL_BASE: 0.05,   // instant-kill kans bij plaatsing (5%) — planeetverdedigingen
+    INSTANT_KILL_MAX: 0.25,    // instant-kill kans bij max. upgrade (25%)
+    INSTANT_KILL_ENERGY_MULT: 2, // energie-bonus t.o.v. normale kill
+    INSTANT_KILL_SCORE_MULT: 2,   // score-bonus t.o.v. normale kill
   },
 
   // ── WAVES ────────────────────────────────────────────────

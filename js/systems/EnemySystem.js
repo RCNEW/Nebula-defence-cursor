@@ -491,7 +491,7 @@ class EnemySystem {
     });
   }
 
-  killEnemy(enemy, giveReward) {
+  killEnemy(enemy, giveReward, instantKill = false) {
     if (!enemy.active) return;
     enemy.deathX = enemy.container.x;
     enemy.deathY = enemy.container.y;
@@ -501,19 +501,110 @@ class EnemySystem {
     this.removeGravitrapRing(enemy);
 
     if (giveReward) {
-      this.scene.addEnergy(enemy.cfg.energyReward);
-      this.scene.addScore(enemy.cfg.scoreReward ?? 10);
-      this._spawnDeathFX(enemy.deathX, enemy.deathY, enemy.cfg.color);
-      this._spawnFloatingReward(
-        enemy.deathX,
-        enemy.deathY,
-        enemy.cfg.energyReward,
-        enemy.cfg.scoreReward ?? 10,
-      );
+      const baseEnergy = enemy.cfg.energyReward;
+      const baseScore  = enemy.cfg.scoreReward ?? 10;
+      const energy = instantKill
+        ? Math.round(baseEnergy * CONFIG.GAME.INSTANT_KILL_ENERGY_MULT)
+        : baseEnergy;
+      const score = instantKill
+        ? Math.round(baseScore * CONFIG.GAME.INSTANT_KILL_SCORE_MULT)
+        : baseScore;
+
+      this.scene.addEnergy(energy);
+      this.scene.addScore(score);
+
+      if (instantKill) {
+        this._spawnInstantKillFX(enemy.deathX, enemy.deathY, enemy.cfg.color);
+      } else {
+        this._spawnDeathFX(enemy.deathX, enemy.deathY, enemy.cfg.color);
+      }
+      this._spawnFloatingReward(enemy.deathX, enemy.deathY, energy, score, instantKill);
     }
 
     enemy.container.destroy();
     this.scene.waveSystem?.onEnemyKilled();
+  }
+
+  _spawnInstantKillFX(x, y, color) {
+    const scene = this.scene;
+
+    const flash = scene.add.graphics().setDepth(30);
+    flash.setPosition(x, y);
+    flash.fillStyle(0xffffff, 1);
+    flash.fillCircle(0, 0, 18);
+    flash.fillStyle(color, 0.95);
+    flash.fillCircle(0, 0, 12);
+    scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 3.2,
+      scaleY: 3.2,
+      duration: 320,
+      ease: 'Cubic.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+
+    const ring = scene.add.graphics().setDepth(29);
+    ring.setPosition(x, y);
+    ring.lineStyle(3, 0xffdd44, 0.95);
+    ring.strokeCircle(0, 0, 10);
+    ring.lineStyle(1.5, 0xffffff, 0.7);
+    ring.strokeCircle(0, 0, 6);
+    scene.tweens.add({
+      targets: ring,
+      scaleX: 4.5,
+      scaleY: 4.5,
+      alpha: 0,
+      duration: 420,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+
+    const sparks = scene.add.graphics().setDepth(28);
+    sparks.setPosition(x, y);
+    for (let i = 0; i < 12; i++) {
+      const ang = (i / 12) * Math.PI * 2;
+      const len = Phaser.Math.Between(22, 42);
+      const thick = i % 3 === 0 ? 3 : 2;
+      sparks.lineStyle(thick, i % 2 === 0 ? 0xffee88 : 0xffffff, 0.95);
+      sparks.lineBetween(0, 0, Math.cos(ang) * len, Math.sin(ang) * len);
+    }
+    scene.tweens.add({
+      targets: sparks,
+      alpha: 0,
+      scaleX: 1.6,
+      scaleY: 1.6,
+      duration: 380,
+      ease: 'Cubic.easeOut',
+      onComplete: () => sparks.destroy(),
+    });
+
+    const label = scene.add.text(x, y - 28, 'INSTANT KILL', {
+      fontSize: `${Math.max(13, Math.round(15 * CONFIG.layout(scene).s))}px`,
+      fill: '#ffee66',
+      fontFamily: CONFIG.THEME.FONT_MAIN,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(31).setAlpha(0);
+
+    scene.tweens.add({
+      targets: label,
+      alpha: 1,
+      y: y - 44,
+      duration: 180,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        scene.tweens.add({
+          targets: label,
+          alpha: 0,
+          y: y - 58,
+          duration: 520,
+          ease: 'Cubic.easeIn',
+          onComplete: () => label.destroy(),
+        });
+      },
+    });
   }
 
   _spawnDeathFX(x, y, color) {
@@ -532,14 +623,17 @@ class EnemySystem {
     });
   }
 
-  _spawnFloatingReward(x, y, energy, score) {
+  _spawnFloatingReward(x, y, energy, score, instantKill = false) {
     const L = CONFIG.layout(this.scene);
     const fs = Math.max(12, Math.round(14 * L.s));
     const lineGap = Math.round(16 * L.sy);
     const rise = Math.round(36 * L.sy);
     const lines = [];
+    if (instantKill) {
+      lines.push({ t: '⚡ INSTANT KILL', fill: '#ffee66' });
+    }
     if (energy > 0) lines.push({ t: `+${energy} ⚡`, fill: CONFIG.THEME.ENERGY_COLOR });
-    if (score > 0) lines.push({ t: `+${score} ★`, fill: CONFIG.THEME.TEXT_SECONDARY });
+    if (score > 0) lines.push({ t: `+${score} ★`, fill: instantKill ? '#ffeeaa' : CONFIG.THEME.TEXT_SECONDARY });
 
     lines.forEach((line, i) => {
       const startY = y - i * lineGap;

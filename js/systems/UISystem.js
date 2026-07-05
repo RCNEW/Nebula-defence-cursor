@@ -58,10 +58,10 @@ class UISystem {
   _buildWaveDisplay() {
     const L = this._L();
 
-    this.elements.waveText = this.scene.add.text(L.WAVE_X, L.WAVE_Y, 'Wave 0', {
+    this.elements.waveText = this.scene.add.text(L.WAVE_X, L.WAVE_Y, '', {
       fontSize: `${Math.round(28 * L.sy)}px`, fill: '#ff44ff',
       fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
-    }).setOrigin(1, 0).setDepth(70);
+    }).setOrigin(1, 0).setDepth(70).setVisible(false);
 
     this.elements.countdownText = this.scene.add.text(
       L.WAVE_X, L.WAVE_Y + Math.round(38 * L.sy), '', {
@@ -79,7 +79,15 @@ class UISystem {
     ).setOrigin(1, 0).setDepth(70).setVisible(false);
   }
 
-  updateWaveDisplay(n) { this.elements.waveText?.setText(`Wave ${n}`); }
+  updateWaveDisplay(n) {
+    const el = this.elements.waveText;
+    if (!el) return;
+    if (n <= 0) {
+      el.setVisible(false);
+    } else {
+      el.setText(`Wave ${n}`).setVisible(true);
+    }
+  }
   updateWaveCountdown(ms) {
     this.elements.countdownText?.setText(ms > 0 ? `Volgende wave: ${(ms/1000).toFixed(1)}s` : '');
   }
@@ -424,7 +432,7 @@ class UISystem {
     const L = this._L();
     const x = L.STATS_X;
     const y = L.SPEED_Y + L.SPD_BTN_H + Math.round(10 * L.sy);
-    const w = L.STATS_W, h = Math.round(250 * L.sy);
+    const w = L.STATS_W, h = Math.round(280 * L.sy);
     const gfx = this.scene.add.graphics().setDepth(65).setVisible(false);
     gfx.fillStyle(CONFIG.THEME.PANEL_BG, 0.92);
     gfx.fillRoundedRect(x, y, w, h, 8);
@@ -434,7 +442,7 @@ class UISystem {
     const fs = Math.round(13 * L.sy);
     const lineGap = Math.round(20 * L.sy);
     const texts = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 13; i++) {
       texts.push(this.scene.add.text(x + 12, y + 10 + i * lineGap, '', {
         fontSize: `${fs}px`, fill: '#ccddff', fontFamily: CONFIG.THEME.FONT_MAIN,
       }).setDepth(66).setVisible(false));
@@ -448,6 +456,10 @@ class UISystem {
     p.gfx.setVisible(true);
     const cfg = defense.cfg;
     const nextUpg = (cfg.upgrades || [])[defense.upgradeLevel];
+    const accuracy = cfg.baseAccuracy != null
+      ? this.scene.defenseSystem?.getAccuracy(defense) : null;
+    const instantKill = defense.category === 'planetDefense'
+      ? this.scene.defenseSystem?.getInstantKillChance(defense) : null;
     const lines = [
       `${cfg.icon || ''}  ${cfg.label}`,
       `Niveau: ${defense.upgradeLevel}/${(cfg.upgrades||[]).length}`,
@@ -455,6 +467,8 @@ class UISystem {
       cfg.range          ? `Bereik: ${Math.round(cfg.range)}` : '',
       (cfg.fireRate || cfg.pulseInterval)
         ? `Rate: ${(1000/(cfg.fireRate||cfg.pulseInterval)).toFixed(1)}/s` : '',
+      accuracy != null ? `Nauwkeurigheid: ${Math.round(accuracy * 100)}%` : '',
+      instantKill != null ? `Instant kill: ${Math.round(instantKill * 100)}%` : '',
       cfg.activeDuration && cfg.activeDuration > 1
         ? `Actief: ${(cfg.activeDuration/1000).toFixed(0)}s` : '',
       cfg.hitsAllowed != null
@@ -464,7 +478,10 @@ class UISystem {
       `[U] Upgrade`,
       `[Del] Verwijder`,
     ];
-    p.texts.forEach((t, i) => t.setText(lines[i] || '').setVisible(true));
+    p.texts.forEach((t, i) => {
+      const line = lines[i] || '';
+      t.setText(line).setVisible(!!line);
+    });
   }
 
   hideDefenseInfo() {

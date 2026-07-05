@@ -725,7 +725,7 @@ class DefenseSystem {
   // plaatsing) naar maxAccuracy (bij de laatste upgrade). Alleen relevant voor
   // defenses met een homing-projectiel (PLANET_DEFENSES); overige defenses
   // hebben geen accuracy-config en raken dus altijd.
-  _getAccuracy(d) {
+  getAccuracy(d) {
     const base = d.cfg.baseAccuracy;
     if (base == null) return 1;
     const max = d.cfg.maxAccuracy ?? 1;
@@ -733,6 +733,30 @@ class DefenseSystem {
     if (maxLevel <= 0) return base;
     const t = Math.min(1, d.upgradeLevel / maxLevel);
     return base + (max - base) * t;
+  }
+
+  // Instant-kill kans: 5% bij plaatsing → 25% bij max. upgrade. Geldt niet voor boss.
+  getInstantKillChance(d) {
+    if (d.category !== 'planetDefense') return 0;
+    const base = CONFIG.GAME.INSTANT_KILL_BASE;
+    const max = CONFIG.GAME.INSTANT_KILL_MAX;
+    const maxLevel = (d.cfg.upgrades || []).length;
+    if (maxLevel <= 0) return base;
+    const t = Math.min(1, d.upgradeLevel / maxLevel);
+    return base + (max - base) * t;
+  }
+
+  _resolvePlanetDefenseHit(es, enemy, defense, { damage = 0, net = null } = {}) {
+    if (!enemy?.active) return;
+    if (enemy.type !== 'boss' && Math.random() < this.getInstantKillChance(defense)) {
+      es.killEnemy(enemy, true, true);
+      return;
+    }
+    if (net) {
+      es.applyNet(enemy, net.damagePerSec, net.duration, net.slowFactor, net.color);
+    } else {
+      es.damageEnemy(enemy, damage);
+    }
   }
 
   _fire(d) {
@@ -831,7 +855,7 @@ class DefenseSystem {
     // Nauwkeurigheid: bepaalt of dit schot raak is. Bij een misser vliegt het
     // projectiel naar een vast punt net naast het doelwit i.p.v. continu te
     // blijven homen — zo mist het zichtbaar in plaats van altijd te raken.
-    const accuracy = this._getAccuracy(d);
+    const accuracy = this.getAccuracy(d);
     const isMiss = Math.random() >= accuracy;
     let missX = null, missY = null;
     if (isMiss) {
@@ -956,14 +980,23 @@ class DefenseSystem {
 
           if (p.target.active) {
             if (p.isNet) {
-              es.applyNet(p.target, p.netDamagePerSec, p.netDuration, p.netSlowFactor, p.netColor);
+              this._resolvePlanetDefenseHit(es, p.target, p.defense, {
+                net: {
+                  damagePerSec: p.netDamagePerSec,
+                  duration: p.netDuration,
+                  slowFactor: p.netSlowFactor,
+                  color: p.netColor,
+                },
+              });
               this._netImpactFX(tx, ty, p.netColor);
             } else {
-              es.damageEnemy(p.target, p.damage);
+              this._resolvePlanetDefenseHit(es, p.target, p.defense, { damage: p.damage });
               if (p.splashRadius > 0) {
                 const near = es.getEnemiesInRange(tx, ty, p.splashRadius);
                 near.forEach(e => {
-                  if (e !== p.target) es.damageEnemy(e, p.damage * 0.5);
+                  if (e !== p.target) {
+                    this._resolvePlanetDefenseHit(es, e, p.defense, { damage: p.damage * 0.5 });
+                  }
                 });
               }
               this._impactFX(tx, ty, p.defense.cfg.color || 0x00ffff);
@@ -1097,11 +1130,13 @@ class DefenseSystem {
             this._mortarExplosionFX(etx, ety, col, p.splashRadius || 80);
             if (p.target.active) {
               const es = this.scene.enemySystem;
-              es.damageEnemy(p.target, p.damage);
+              this._resolvePlanetDefenseHit(es, p.target, p.defense, { damage: p.damage });
               if (p.splashRadius > 0) {
                 const near = es.getEnemiesInRange(etx, ety, p.splashRadius);
                 near.forEach(e => {
-                  if (e !== p.target) es.damageEnemy(e, p.damage * 0.6);
+                  if (e !== p.target) {
+                    this._resolvePlanetDefenseHit(es, e, p.defense, { damage: p.damage * 0.6 });
+                  }
                 });
               }
             }
