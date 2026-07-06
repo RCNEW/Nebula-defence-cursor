@@ -128,9 +128,18 @@ class EnemySystem {
     const planetY = L.PLANET_Y;
     const shieldR = L.ORBIT_R;
 
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
-      const e = this.enemies[i];
-      if (!e.active) { this.enemies.splice(i, 1); continue; }
+    // BUGFIX: lokale referentie naar de array vastleggen vóór de loop.
+    // Als tijdens deze iteratie een game-over wordt getriggerd (bv. een
+    // vijand raakt de planeet -> schild op 0 -> _triggerGameOver() ->
+    // clearAll()), wordt `this.enemies` vervangen door een NIEUWE lege
+    // array. Zonder deze lokale referentie zou de loop daarna proberen
+    // `this.enemies[i]` te lezen uit die nieuwe (lege) array, wat
+    // `undefined` oplevert en crasht op `e.active`.
+    const list = this.enemies;
+
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (!e || !e.active) { list.splice(i, 1); continue; }
 
       // Status timers
       if (e.frozen) {
@@ -300,7 +309,7 @@ class EnemySystem {
 
   // ── DAMAGE ────────────────────────────────────────────────
   damageEnemy(enemy, amount) {
-    if (!enemy.active) return;
+    if (!enemy || !enemy.active) return;
     enemy.hp = Math.max(0, enemy.hp - amount);
     this._updateHealthBar(enemy);
     if (enemy.hp <= 0) {
@@ -336,7 +345,7 @@ class EnemySystem {
 
   // EMP Disruptor: verlaag vijand één tier
   degradeEnemy(enemy) {
-    if (!enemy.active) return;
+    if (!enemy || !enemy.active) return;
     const order = CONFIG.ENEMY_TIER_ORDER;
     const idx   = order.indexOf(enemy.type);
     if (idx <= 0) {
@@ -492,7 +501,7 @@ class EnemySystem {
   }
 
   killEnemy(enemy, giveReward, instantKill = false) {
-    if (!enemy.active) return;
+    if (!enemy || !enemy.active) return;
     enemy.deathX = enemy.container.x;
     enemy.deathY = enemy.container.y;
     enemy.active = false;
