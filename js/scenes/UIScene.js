@@ -19,7 +19,7 @@ class UIScene extends Phaser.Scene {
       'updateWaveDisplay', 'updateWaveCountdown', 'updateEnemiesRemaining',
       'showWaveAnnouncement', 'showWaveCompleted',
       'highlightSpeedBtn', 'showPausedIndicator',
-      'updateCubeButtons', 'animateCubeRotation',
+      'updateCubeButtons', 'resetCubeButtons', 'animateCubeRotation',
       'updateSpecialAction', 'updateSpecialActionTimer',
       'showDefenseInfo', 'hideDefenseInfo',
       'setStatusMsg', 'flashMsg',

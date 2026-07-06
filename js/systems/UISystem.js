@@ -457,6 +457,20 @@ class UISystem {
     if (info?.key) this.scene.defenseSystem?.startPlacing(info.category, info.key);
   }
 
+  // Zet de cube-knoppen terug naar de placeholder-status ('?'), zoals bij
+  // de allereerste keer spelen. Nodig bij (her)start van een game, omdat
+  // UIScene — en dus deze knoppen — actief blijft na een restart en anders
+  // gewoon de laatst getoonde verdedigingen van de vorige sessie zou tonen.
+  resetCubeButtons() {
+    ['a', 'b', 'c'].forEach(id => {
+      const btn = this.elements.cubeBtns?.[id];
+      if (!btn) return;
+      btn.icon.setText('❓');
+      btn.nameT.setText('?');
+      btn.costT.setText('⚡ ?');
+    });
+  }
+
   updateCubeButtons() {
     ['a', 'b', 'c'].forEach(id => {
       const btn = this.elements.cubeBtns?.[id];

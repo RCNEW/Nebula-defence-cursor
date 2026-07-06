@@ -64,6 +64,7 @@ class GameScene extends Phaser.Scene {
     this.uiScene.updateScoreDisplay(this.score);
     this.uiScene.updateWaveDisplay(0);
     this.uiScene.highlightSpeedBtn(this.speedIndex);
+    this.uiScene.resetCubeButtons();
     this.waveSystem.startGame();
   }
 
