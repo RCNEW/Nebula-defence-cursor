@@ -68,7 +68,7 @@ class WaveSystem {
     this.state = 'active';
 
     this.scene.uiScene?.showWaveAnnouncement(this.currentWave, this.totalEnemiesThisWave);
-    this.scene.defenseSystem?.rotateCubes(false);
+    this.scene.defenseSystem?.rotateCubes(true);
     this.scene.uiScene?.updateEnemiesRemaining(this.totalEnemiesThisWave);
   }
 

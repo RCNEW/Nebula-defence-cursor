@@ -29,31 +29,51 @@ class UISystem {
     const L = this._L();
     const x = L.STATS_X + Math.round(12 * L.sx);
     const y = L.STATS_Y + Math.round(12 * L.sy);
-    const fs = Math.round(18 * L.sy);
-    const fsS = Math.round(14 * L.sy);
+    const fs = Math.round(22 * L.sy);
+    const fsS = Math.round(18 * L.sy);
+    const iconFs = Math.round(36 * L.sy);
+    const iconX = x + Math.round(2 * L.sx);
+    const textX = x + Math.round(50 * L.sx);
+    const rowGap = Math.round(42 * L.sy);
 
-    this.elements.energyText = this.scene.add.text(x, y, '⚡ Energie: 0', {
+    this.elements.energyIcon = this.scene.add.text(iconX, y + Math.round(2 * L.sy), '⚡', {
+      fontSize: `${iconFs}px`, fill: CONFIG.THEME.ENERGY_COLOR,
+      fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(70);
+
+    this.elements.energyText = this.scene.add.text(textX, y, 'Energie: 0', {
       fontSize: `${fs}px`, fill: CONFIG.THEME.ENERGY_COLOR,
       fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
     }).setDepth(70);
 
-    this.elements.shieldText = this.scene.add.text(x, y + Math.round(28 * L.sy), '🛡 Schild: 100%', {
+    this.elements.shieldIcon = this.scene.add.text(iconX, y + rowGap + Math.round(2 * L.sy), '🛡', {
+      fontSize: `${iconFs}px`, fill: CONFIG.THEME.SHIELD_COLOR,
+      fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(70);
+
+    this.elements.shieldText = this.scene.add.text(textX, y + rowGap, 'Schild: 100%', {
       fontSize: `${fs}px`, fill: CONFIG.THEME.SHIELD_COLOR,
       fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
     }).setDepth(70);
 
-    this.elements.scoreText = this.scene.add.text(x, y + Math.round(56 * L.sy), '★ Score: 0', {
+    this.elements.scoreIcon = this.scene.add.text(iconX, y + rowGap * 2 + Math.round(1 * L.sy), '★', {
+      fontSize: `${Math.round(31 * L.sy)}px`, fill: CONFIG.THEME.TEXT_SECONDARY,
+      fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(70);
+
+    this.elements.scoreText = this.scene.add.text(textX, y + rowGap * 2, 'Score: 0', {
       fontSize: `${fsS}px`, fill: CONFIG.THEME.TEXT_SECONDARY,
       fontFamily: CONFIG.THEME.FONT_MAIN,
     }).setDepth(70);
   }
 
-  updateEnergyDisplay(val) { this.elements.energyText?.setText(`⚡ Energie: ${val}`); }
+  updateEnergyDisplay(val) { this.elements.energyText?.setText(`Energie: ${val}`); }
   updateShieldDisplay(pct) {
     const col = pct > 50 ? CONFIG.THEME.SHIELD_COLOR : pct > 25 ? CONFIG.THEME.TEXT_WARN : CONFIG.THEME.TEXT_DANGER;
-    this.elements.shieldText?.setFill(col).setText(`🛡 Schild: ${pct}%`);
+    this.elements.shieldIcon?.setFill(col);
+    this.elements.shieldText?.setFill(col).setText(`Schild: ${pct}%`);
   }
-  updateScoreDisplay(val) { this.elements.scoreText?.setText(`★ Score: ${val}`); }
+  updateScoreDisplay(val) { this.elements.scoreText?.setText(`Score: ${val}`); }
 
   _buildWaveDisplay() {
     const L = this._L();
@@ -292,18 +312,16 @@ class UISystem {
 
   _buildSpeedControls() {
     const L = this._L();
-    const baseY  = L.SPEED_Y;
+    const baseY  = L.SPEED_Y + Math.round(42 * L.sy);
     const bW     = L.SPD_BTN_W;
     const bH     = L.SPD_BTN_H;
     const gap    = Math.round(4 * L.sx);
-    const speeds = ['½×', '1×', '2×'];
+    const speeds = ['>', '>>', '>>>'];
     this.elements.speedBtns = [];
 
     speeds.forEach((label, i) => {
       const btnX = L.SPEED_BTN_BASE_X + i * (bW + gap);
-      const btn  = this._makeButton(btnX, baseY, bW, bH, label, 0x0a1a2e, 0x00ccff, Math.round(13 * L.sy));
-      btn._w = bW; btn._h = bH; btn._borderCol = 0x00ccff;
-      btn.on('pointerdown', () => this.scene.gameScene?.setSpeed(i));
+      const btn = this._makeSpeedButton(btnX, baseY, bW, bH, label, L);
       this.elements.speedBtns.push(btn);
     });
 
@@ -316,14 +334,85 @@ class UISystem {
 
   highlightSpeedBtn(index) {
     this.elements.speedBtns?.forEach((btn, i) => {
-      const active = i === index;
-      const w = btn._w ?? 64, h = btn._h ?? 30, bc = btn._borderCol ?? 0x00ccff;
-      btn.bg.clear();
-      btn.bg.fillStyle(active ? 0x004466 : 0x0a1a2e, 0.95);
-      btn.bg.lineStyle(1.5, active ? 0x00ffff : bc, active ? 1 : 0.8);
-      btn.bg.fillRoundedRect(-w/2, -h/2, w, h, 6);
-      btn.bg.strokeRoundedRect(-w/2, -h/2, w, h, 6);
+      btn.active = i === index;
+      this._drawSpeedButton(btn);
     });
+  }
+
+  _makeSpeedButton(x, y, W, H, label, L) {
+    const container = this.scene.add.container(x, y).setDepth(60);
+    const bg = this.scene.add.graphics();
+    container.add(bg);
+
+    const iconT = this.scene.add.text(0, Math.round(1 * L.sy), label, {
+      fontSize: `${Math.round(18 * L.sy)}px`,
+      fill: '#bffcff',
+      fontFamily: CONFIG.THEME.FONT_MAIN,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(61);
+    container.add(iconT);
+
+    const hit = this.scene.add.rectangle(0, 0, W, H, 0xffffff, 0).setInteractive().setDepth(62);
+    container.add(hit);
+
+    const btn = { container, bg, iconT, hit, W, H, active: false, hovered: false, color: 0x00ccff };
+    hit.on('pointerover', () => {
+      btn.hovered = true;
+      this._drawSpeedButton(btn);
+    });
+    hit.on('pointerout', () => {
+      btn.hovered = false;
+      this._drawSpeedButton(btn);
+    });
+    hit.on('pointerdown', () => this.scene.gameScene?.setSpeed(this.elements.speedBtns.indexOf(btn)));
+
+    this._drawSpeedButton(btn);
+    return btn;
+  }
+
+  _drawSpeedButton(btn) {
+    const W = btn.W, H = btn.H;
+    const d = Math.max(6, Math.round(Math.min(W, H) * 0.18));
+    const faceW = W - d;
+    const faceH = H - d;
+    const faceLeft = -W / 2;
+    const faceTop = -H / 2 + d;
+    const faceRight = W / 2 - d;
+    const color = btn.color ?? 0x00ccff;
+    const active = !!btn.active;
+    const hovered = !!btn.hovered;
+    const faceFill = active
+      ? (hovered ? this._mixColor(color, 0xffffff, 0.24) : this._mixColor(color, 0x000000, 0.62))
+      : (hovered ? 0x102446 : 0x081428);
+
+    btn.bg.clear();
+    btn.bg.fillStyle(0x000000, hovered ? 0.3 : 0.22);
+    btn.bg.fillEllipse(-d * 0.15, H / 2 + d * 0.35, W * 0.88, d * 0.9);
+
+    btn.bg.fillStyle(color, active ? hovered ? 0.55 : 0.42 : hovered ? 0.28 : 0.2);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceLeft, faceTop);
+    btn.bg.lineTo(faceLeft + d, -H / 2);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(faceRight, faceTop);
+    btn.bg.closePath();
+    btn.bg.fillPath();
+
+    btn.bg.fillStyle(color, active ? hovered ? 0.32 : 0.23 : hovered ? 0.16 : 0.1);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceRight, faceTop);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(W / 2, H / 2 - d);
+    btn.bg.lineTo(faceRight, H / 2);
+    btn.bg.closePath();
+    btn.bg.fillPath();
+
+    btn.bg.fillStyle(faceFill, active ? 0.92 : 0.98);
+    btn.bg.fillRoundedRect(faceLeft, faceTop, faceW, faceH, 6);
+    btn.bg.lineStyle(active ? hovered ? 2.7 : 2.3 : hovered ? 1.9 : 1.4, color, active ? 1 : hovered ? 0.85 : 0.58);
+    btn.bg.strokeRoundedRect(faceLeft, faceTop, faceW, faceH, 6);
+    btn.iconT.setAlpha(active ? 1 : 0.86);
+    btn.iconT.setScale(hovered ? 1.08 : 1);
   }
 
   showPausedIndicator(paused) {
@@ -343,64 +432,61 @@ class UISystem {
 
       const container = this.scene.add.container(X, Y).setDepth(60);
 
-      const sideL = this.scene.add.graphics();
-      sideL.fillStyle(theme.border, 0.18);
-      sideL.fillRect(-W/2 - 8, -H/2 + 8, 8, H);
-      container.add(sideL);
-
-      const sideB = this.scene.add.graphics();
-      sideB.fillStyle(theme.border, 0.12);
-      sideB.fillRect(-W/2, H/2, W, 8);
-      container.add(sideB);
-
       const bg = this.scene.add.graphics();
       this._drawCubeFace(bg, W, H, theme, false);
       container.add(bg);
 
       const fs = (v) => Math.round(v * L.sy);
 
-      const catLabel = this.scene.add.text(-W/2 + 6, -H/2 + 5, theme.name, {
-        fontSize: `${fs(10)}px`, fill: theme.label,
-        fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
-      }).setDepth(61);
-      container.add(catLabel);
-
-      const icon = this.scene.add.text(0, fs(-18), '?', {
-        fontSize: `${fs(30)}px`,
+      const icon = this.scene.add.text(-W * 0.26, fs(5), '?', {
+        fontSize: `${fs(46)}px`,
       }).setOrigin(0.5).setDepth(61);
       container.add(icon);
 
-      const nameT = this.scene.add.text(0, fs(14), '?', {
-        fontSize: `${fs(14)}px`, fill: '#ffffff',
+      const nameT = this.scene.add.text(0, fs(-10), '?', {
+        fontSize: `${fs(17)}px`, fill: '#ffffff',
         fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
-      }).setOrigin(0.5).setDepth(61);
+        align: 'center',
+        wordWrap: { width: W - 34, useAdvancedWrap: true },
+      }).setOrigin(0.5).setDepth(61).setVisible(false);
       container.add(nameT);
 
-      const costT = this.scene.add.text(0, fs(32), '⚡ ?', {
-        fontSize: `${fs(12)}px`, fill: CONFIG.THEME.ENERGY_COLOR,
-        fontFamily: CONFIG.THEME.FONT_MAIN,
+      const costT = this.scene.add.text(W * 0.28, fs(5), '?', {
+        fontSize: `${fs(34)}px`, fill: CONFIG.THEME.ENERGY_COLOR,
+        fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(61);
       container.add(costT);
 
-      const hotkeyT = this.scene.add.text(W/2 - 6, H/2 - 6,
-        id === 'a' ? '[Q]' : id === 'b' ? '[W]' : '[E]', {
-          fontSize: `${fs(10)}px`, fill: '#446688',
-          fontFamily: CONFIG.THEME.FONT_MAIN,
-        }
-      ).setOrigin(1, 1).setDepth(61);
-      container.add(hotkeyT);
+      const buyT = this.scene.add.text(0, fs(18), 'Buy for ?', {
+        fontSize: `${fs(16)}px`, fill: CONFIG.THEME.ENERGY_COLOR,
+        fontFamily: CONFIG.THEME.FONT_MAIN,
+        align: 'center',
+      }).setOrigin(0.5).setDepth(61).setVisible(false);
+      container.add(buyT);
 
       const hit = this.scene.add.rectangle(0, 0, W, H, 0xffffff, 0).setInteractive().setDepth(62);
       container.add(hit);
 
-      hit.on('pointerover', () => this._drawCubeFace(bg, W, H, theme, true));
-      hit.on('pointerout',  () => this._drawCubeFace(bg, W, H, theme, false));
+      const btnState = { container, bg, icon, nameT, costT, buyT, hit, theme, W, H, baseY: Y, hovered: false };
+
+      hit.on('pointerover', () => {
+        btnState.hovered = true;
+        this._drawCubeFace(bg, W, H, theme, true);
+        this._setCubeHoverState(btnState, true);
+        container.setY(Y - Math.round(3 * L.sy));
+      });
+      hit.on('pointerout',  () => {
+        btnState.hovered = false;
+        this._drawCubeFace(bg, W, H, theme, false);
+        this._setCubeHoverState(btnState, false);
+        container.setY(Y);
+      });
       hit.on('pointerdown', () => {
         const info = this.scene.defenseSystem?.getCurrentCubeDefense(id);
         if (info) this.scene.defenseSystem?.startPlacing(info.category, info.key);
       });
 
-      this.elements.cubeBtns[id] = { container, bg, icon, nameT, costT, hit, theme, W, H };
+      this.elements.cubeBtns[id] = btnState;
     });
 
     this.updateCubeButtons();
@@ -431,14 +517,60 @@ class UISystem {
   }
 
   _drawCubeFace(gfx, W, H, theme, hovered) {
+    const d = Math.max(12, Math.round(Math.min(W, H) * 0.16));
+    const left = -W / 2;
+    const right = W / 2;
+    const top = -H / 2;
+    const bottom = H / 2;
+    const faceTop = top + d;
+    const faceLeft = left;
+    const faceRight = right - d;
+    const faceBottom = bottom;
+    const glow = hovered ? 1 : 0.68;
+
     gfx.clear();
-    gfx.fillStyle(hovered ? 0x0d2040 : theme.bg, 0.97);
-    gfx.fillRoundedRect(-W/2, -H/2, W, H, 8);
-    gfx.lineStyle(hovered ? 2 : 1.5, theme.border, hovered ? 1 : 0.75);
-    gfx.strokeRoundedRect(-W/2, -H/2, W, H, 8);
-    gfx.lineStyle(1, theme.border, 0.4);
-    gfx.beginPath(); gfx.moveTo(-W/2+2,-H/2+14); gfx.lineTo(-W/2+2,-H/2+2); gfx.lineTo(-W/2+14,-H/2+2); gfx.strokePath();
-    gfx.beginPath(); gfx.moveTo(W/2-2,H/2-14);   gfx.lineTo(W/2-2,H/2-2);   gfx.lineTo(W/2-14,H/2-2);  gfx.strokePath();
+    gfx.fillStyle(0x000000, hovered ? 0.32 : 0.24);
+    gfx.fillEllipse(-d * 0.15, bottom + d * 0.35, W * 0.92, d * 0.9);
+
+    gfx.fillStyle(theme.border, hovered ? 0.38 : 0.24);
+    gfx.beginPath();
+    gfx.moveTo(faceLeft, faceTop);
+    gfx.lineTo(faceLeft + d, top);
+    gfx.lineTo(right, top);
+    gfx.lineTo(faceRight, faceTop);
+    gfx.closePath();
+    gfx.fillPath();
+
+    gfx.fillStyle(theme.border, hovered ? 0.2 : 0.13);
+    gfx.beginPath();
+    gfx.moveTo(faceRight, faceTop);
+    gfx.lineTo(right, top);
+    gfx.lineTo(right, bottom - d);
+    gfx.lineTo(faceRight, faceBottom);
+    gfx.closePath();
+    gfx.fillPath();
+
+    gfx.fillStyle(hovered ? 0x0d2040 : theme.bg, 0.98);
+    gfx.fillRoundedRect(faceLeft, faceTop, W - d, H - d, 7);
+    gfx.fillStyle(0xffffff, hovered ? 0.1 : 0.055);
+    gfx.fillRoundedRect(faceLeft + 5, faceTop + 5, W - d - 10, Math.max(12, (H - d) * 0.3), 5);
+
+    gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, glow);
+    gfx.strokeRoundedRect(faceLeft, faceTop, W - d, H - d, 7);
+    gfx.lineStyle(hovered ? 1.6 : 1.1, theme.border, hovered ? 0.62 : 0.42);
+    gfx.beginPath();
+    gfx.moveTo(faceLeft, faceTop);
+    gfx.lineTo(faceLeft + d, top);
+    gfx.lineTo(right, top);
+    gfx.lineTo(right, bottom - d);
+    gfx.lineTo(faceRight, faceBottom);
+    gfx.strokePath();
+
+    gfx.lineStyle(1, 0xffffff, hovered ? 0.18 : 0.1);
+    gfx.beginPath();
+    gfx.moveTo(faceLeft + 10, faceTop + 12);
+    gfx.lineTo(faceRight - 12, faceTop + 12);
+    gfx.strokePath();
   }
 
   _getActiveCubeDef(id) {
@@ -467,7 +599,9 @@ class UISystem {
       if (!btn) return;
       btn.icon.setText('❓');
       btn.nameT.setText('?');
-      btn.costT.setText('⚡ ?');
+      btn.costT.setText('?');
+      btn.buyT?.setText('Buy for ?');
+      this._setCubeHoverState(btn, !!btn.hovered);
     });
   }
 
@@ -478,7 +612,9 @@ class UISystem {
       const def = this._getActiveCubeDef(id);
       btn.icon.setText(def.cfg?.icon || '❓');
       btn.nameT.setText(def.cfg?.label || '???');
-      btn.costT.setText(`⚡ ${def.cfg?.cost ?? '?'}`);
+      btn.costT.setText(`${def.cfg?.cost ?? '?'}`);
+      btn.buyT?.setText(`Buy for ${def.cfg?.cost ?? '?'}`);
+      this._setCubeHoverState(btn, !!btn.hovered);
       btn.hit.removeAllListeners('pointerdown');
       btn.hit.on('pointerdown', () => {
         const info = this.scene.defenseSystem?.getCurrentCubeDefense(id);
@@ -495,23 +631,46 @@ class UISystem {
       if (!btn) { if (++completed === cubeIds.length) onComplete?.(); return; }
 
       this.scene.time.delayedCall(i * 120, () => {
+        const baseY = btn.baseY ?? btn.container.y;
+        btn.container.setY(baseY);
+        this.scene.tweens.killTweensOf(btn.container);
+        this._drawCubeFace(btn.bg, btn.W, btn.H, btn.theme, true);
+
         this.scene.tweens.add({
-          targets: btn.container, scaleY: 0, scaleX: 0.85,
-          duration: 180, ease: 'Cubic.easeIn',
+          targets: btn.container,
+          scaleY: 0.12,
+          scaleX: 0.52,
+          angle: -10,
+          y: baseY - 18,
+          duration: 230,
+          ease: 'Cubic.easeIn',
           onComplete: () => {
             const saved = this.scene.defenseSystem.cubeIndices[id];
             this.scene.defenseSystem.cubeIndices[id] = nextIndices[id];
             this._updateSingleCubeBtn(id);
             this.scene.defenseSystem.cubeIndices[id] = saved;
+            btn.container.angle = 10;
 
             this.scene.tweens.add({
-              targets: btn.container, scaleY: 1.05, scaleX: 1,
-              duration: 126, ease: 'Cubic.easeOut',
+              targets: btn.container,
+              scaleY: 1.12,
+              scaleX: 1.04,
+              angle: 0,
+              y: baseY + 2,
+              duration: 240,
+              ease: 'Back.easeOut',
               onComplete: () => {
                 this.scene.tweens.add({
-                  targets: btn.container, scaleY: 1,
-                  duration: 80, ease: 'Bounce.easeOut',
-                  onComplete: () => { if (++completed === cubeIds.length) onComplete?.(); },
+                  targets: btn.container,
+                  scaleY: 1,
+                  scaleX: 1,
+                  y: btn.hovered ? baseY - 3 : baseY,
+                  duration: 120,
+                  ease: 'Sine.easeOut',
+                  onComplete: () => {
+                    this._drawCubeFace(btn.bg, btn.W, btn.H, btn.theme, !!btn.hovered);
+                    if (++completed === cubeIds.length) onComplete?.();
+                  },
                 });
               },
             });
@@ -527,7 +686,17 @@ class UISystem {
     const def = this._getActiveCubeDef(id);
     btn.icon.setText(def.cfg?.icon || '❓');
     btn.nameT.setText(def.cfg?.label || '???');
-    btn.costT.setText(`⚡ ${def.cfg?.cost ?? '?'}`);
+    btn.costT.setText(`${def.cfg?.cost ?? '?'}`);
+    btn.buyT?.setText(`Buy for ${def.cfg?.cost ?? '?'}`);
+    this._setCubeHoverState(btn, !!btn.hovered);
+  }
+
+  _setCubeHoverState(btn, hovered) {
+    btn.icon.setAlpha(hovered ? 0.18 : 1);
+    btn.icon.setScale(hovered ? 1.06 : 1);
+    btn.costT.setVisible(!hovered);
+    btn.nameT.setVisible(hovered);
+    btn.buyT?.setVisible(hovered);
   }
 
   _buildSpecialButtons() {
@@ -550,49 +719,161 @@ class UISystem {
     const container = this.scene.add.container(x, y).setDepth(60);
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x081428, 0.95);
-    bg.lineStyle(1.5, 0x446688, 0.7);
-    bg.fillRoundedRect(-W/2, -H/2, W, H, 6);
-    bg.strokeRoundedRect(-W/2, -H/2, W, H, 6);
     container.add(bg);
 
-    const iconT = this.scene.add.text(0, Math.round(-20 * L.sy), cfg.icon, {
-      fontSize: `${Math.round(28 * L.sy)}px`,
+    const clock = this.scene.add.graphics();
+    container.add(clock);
+
+    const iconT = this.scene.add.text(0, Math.round(3 * L.sy), cfg.icon, {
+      fontSize: `${Math.round(44 * L.sy)}px`,
     }).setOrigin(0.5).setDepth(61);
     container.add(iconT);
 
-    const timerT = this.scene.add.text(0, Math.round(14 * L.sy),
-      `${(cfg.initialDelay/1000).toFixed(0)}s`, {
-        fontSize: `${Math.round(18 * L.sy)}px`, fill: '#886644',
-        fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
-      }
-    ).setOrigin(0.5).setDepth(61);
-    container.add(timerT);
-
     const hit = this.scene.add.rectangle(0, 0, W, H, 0xffffff, 0).setInteractive().setDepth(62);
     container.add(hit);
+    const btn = { container, bg, clock, iconT, hit, key, cfg, W, H, progress: 0, ready: false, hovered: false };
+
+    hit.on('pointerover', () => {
+      btn.hovered = true;
+      this._drawSpecialButton(btn);
+    });
+    hit.on('pointerout', () => {
+      btn.hovered = false;
+      this._drawSpecialButton(btn);
+    });
     hit.on('pointerdown', () => this.scene.specialActionSystem?.activate(key));
 
-    return { container, bg, timerT, iconT, W, H };
+    this._drawSpecialButton(btn);
+    return btn;
   }
 
   updateSpecialActionTimer(key, ms) {
-    this.elements.specialBtns?.[key]?.timerT.setText(ms > 0 ? `${(ms/1000).toFixed(0)}s` : 'KLAAR');
+    const btn = this.elements.specialBtns?.[key];
+    const action = this.scene.specialActionSystem?.actions[key];
+    if (!btn || !action) return;
+    const total = action.state === 'waiting' ? action.cfg.initialDelay : action.cfg.cooldown;
+    btn.progress = total > 0 ? Phaser.Math.Clamp(1 - (ms / total), 0, 1) : 1;
+    btn.ready = action.state === 'ready' || ms <= 0;
+    this._drawSpecialButton(btn);
   }
 
   updateSpecialAction(key) {
     const btn = this.elements.specialBtns?.[key];
     const action = this.scene.specialActionSystem?.actions[key];
     if (!btn || !action) return;
-    const ready = action.state === 'ready';
+    btn.cfg = action.cfg;
+    btn.ready = action.state === 'ready';
+    if (btn.ready) {
+      btn.progress = 1;
+    } else {
+      const total = action.state === 'waiting' ? action.cfg.initialDelay : action.cfg.cooldown;
+      btn.progress = total > 0 ? Phaser.Math.Clamp(1 - (action.timer / total), 0, 1) : 0;
+    }
+    this._drawSpecialButton(btn);
+  }
+
+  _drawSpecialButton(btn) {
     const W = btn.W, H = btn.H;
+    const d = Math.max(10, Math.round(Math.min(W, H) * 0.16));
+    const faceW = W - d;
+    const faceH = H - d;
+    const faceLeft = -W / 2;
+    const faceTop = -H / 2 + d;
+    const faceRight = W / 2 - d;
+    const color = btn.cfg?.color ?? 0x446688;
+    const ready = !!btn.ready;
+    const hovered = !!btn.hovered;
+    const borderCol = color;
+    const faceFill = ready
+      ? (hovered ? this._mixColor(color, 0xffffff, 0.28) : this._mixColor(color, 0x000000, 0.68))
+      : (hovered ? 0x102446 : 0x081428);
+
     btn.bg.clear();
-    const borderCol = ready ? 0x00ff88 : 0x446688;
-    btn.bg.fillStyle(ready ? 0x0d2a1a : 0x081428, 0.95);
-    btn.bg.lineStyle(1.5, borderCol, ready ? 1 : 0.5);
-    btn.bg.fillRoundedRect(-W/2, -H/2, W, H, 6);
-    btn.bg.strokeRoundedRect(-W/2, -H/2, W, H, 6);
-    btn.timerT.setFill(ready ? CONFIG.THEME.TEXT_GOOD : '#886644');
+    btn.bg.fillStyle(0x000000, hovered ? 0.32 : 0.24);
+    btn.bg.fillEllipse(-d * 0.15, H / 2 + d * 0.35, W * 0.92, d * 0.9);
+
+    btn.bg.fillStyle(borderCol, ready ? hovered ? 0.58 : 0.44 : hovered ? 0.3 : 0.22);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceLeft, faceTop);
+    btn.bg.lineTo(faceLeft + d, -H / 2);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(faceRight, faceTop);
+    btn.bg.closePath();
+    btn.bg.fillPath();
+
+    btn.bg.fillStyle(borderCol, ready ? hovered ? 0.34 : 0.24 : hovered ? 0.17 : 0.12);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceRight, faceTop);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(W / 2, H / 2 - d);
+    btn.bg.lineTo(faceRight, H / 2);
+    btn.bg.closePath();
+    btn.bg.fillPath();
+
+    btn.bg.fillStyle(faceFill, ready ? 0.9 : 0.98);
+    btn.bg.fillRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
+    btn.bg.lineStyle(ready ? hovered ? 3.1 : 2.6 : hovered ? 2 : 1.5, borderCol, ready ? 1 : hovered ? 0.85 : 0.58);
+    btn.bg.strokeRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
+    btn.bg.lineStyle(1.1, borderCol, ready ? 0.62 : 0.36);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceLeft, faceTop);
+    btn.bg.lineTo(faceLeft + d, -H / 2);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(W / 2, H / 2 - d);
+    btn.bg.lineTo(faceRight, H / 2);
+    btn.bg.strokePath();
+
+    this._drawSpecialClock(btn, faceW, faceH, color);
+    btn.iconT.setAlpha(ready ? 1 : 0.94);
+    btn.iconT.setScale(hovered ? 1.1 : 1);
+  }
+
+  _mixColor(a, b, amount) {
+    const t = Phaser.Math.Clamp(amount, 0, 1);
+    const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+    const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    return ((ar + (br - ar) * t) << 16)
+      | ((ag + (bg - ag) * t) << 8)
+      | (ab + (bb - ab) * t);
+  }
+
+  _drawSpecialClock(btn, faceW, faceH, color) {
+    const gfx = btn.clock;
+    const progress = Phaser.Math.Clamp(btn.progress ?? 0, 0, 1);
+    const radius = Math.max(18, Math.min(faceW, faceH) * 0.36);
+    const start = -Math.PI / 2;
+    const end = start + progress * Math.PI * 2;
+
+    gfx.clear();
+    if (btn.ready) return;
+
+    gfx.fillStyle(color, 0.08);
+    gfx.fillCircle(0, 0, radius + 6);
+
+    if (progress > 0) {
+      this._fillClockSector(gfx, 0, 0, radius + 6, start, end, color, 0.35);
+    }
+
+    gfx.lineStyle(2.5, color, 0.92);
+    gfx.beginPath();
+    gfx.moveTo(0, 0);
+    gfx.lineTo(Math.cos(end) * (radius + 6), Math.sin(end) * (radius + 6));
+    gfx.strokePath();
+    gfx.fillStyle(color, 0.95);
+    gfx.fillCircle(0, 0, 3.5);
+  }
+
+  _fillClockSector(gfx, x, y, radius, startAngle, endAngle, color, alpha) {
+    const steps = Math.max(3, Math.ceil((endAngle - startAngle) / (Math.PI / 24)));
+    gfx.fillStyle(color, alpha);
+    gfx.beginPath();
+    gfx.moveTo(x, y);
+    for (let i = 0; i <= steps; i++) {
+      const a = startAngle + (endAngle - startAngle) * (i / steps);
+      gfx.lineTo(x + Math.cos(a) * radius, y + Math.sin(a) * radius);
+    }
+    gfx.closePath();
+    gfx.fillPath();
   }
 
   _buildActionButtons() {
@@ -614,7 +895,8 @@ class UISystem {
   _buildDefenseInfoPanel() {
     const L = this._L();
     const x = L.STATS_X;
-    const y = L.SPEED_Y + L.SPD_BTN_H + Math.round(10 * L.sy);
+    const speedOffset = Math.round(42 * L.sy);
+    const y = L.SPEED_Y + speedOffset + L.SPD_BTN_H + Math.round(28 * L.sy);
     const w = L.STATS_W, h = Math.round(280 * L.sy);
     const gfx = this.scene.add.graphics().setDepth(65).setVisible(false);
     gfx.fillStyle(CONFIG.THEME.PANEL_BG, 0.92);
