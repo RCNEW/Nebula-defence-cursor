@@ -77,6 +77,95 @@ class UISystem {
         fontFamily: CONFIG.THEME.FONT_MAIN,
       }
     ).setOrigin(1, 0).setDepth(70).setVisible(false);
+
+    this._buildPrepCountdown();
+  }
+
+  _buildPrepCountdown() {
+    const L = this._L();
+    const x = L.W / 2;
+    const y = Math.round(105 * L.sy);
+    const W = Math.round(230 * L.s);
+    const H = Math.round(132 * L.s);
+    const container = this.scene.add.container(x, y)
+      .setDepth(210)
+      .setVisible(false)
+      .setAlpha(0)
+      .setScale(0.92);
+
+    const bg = this.scene.add.graphics();
+    this._drawPrepCountdownBg(bg, W, H);
+    container.add(bg);
+
+    const ring = this.scene.add.graphics();
+    ring.lineStyle(Math.max(2, Math.round(2 * L.s)), 0x00ccff, 0.75);
+    ring.strokeCircle(0, Math.round(20 * L.s), Math.round(38 * L.s));
+    ring.lineStyle(Math.max(1, Math.round(1 * L.s)), 0xff44ff, 0.5);
+    ring.beginPath();
+    ring.arc(0, Math.round(20 * L.s), Math.round(48 * L.s), Phaser.Math.DegToRad(210), Phaser.Math.DegToRad(330));
+    ring.strokePath();
+    container.add(ring);
+
+    const label = this.scene.add.text(0, Math.round(-38 * L.s), 'Get ready', {
+      fontSize: `${Math.round(20 * L.s)}px`,
+      fill: '#aaddff',
+      fontFamily: CONFIG.THEME.FONT_MAIN,
+      fontStyle: 'bold',
+      stroke: '#001122',
+      strokeThickness: Math.max(2, Math.round(3 * L.s)),
+    }).setOrigin(0.5);
+    container.add(label);
+
+    const number = this.scene.add.text(0, Math.round(22 * L.s), '5', {
+      fontSize: `${Math.round(68 * L.s)}px`,
+      fill: '#ffffff',
+      fontFamily: CONFIG.THEME.FONT_MAIN,
+      fontStyle: 'bold',
+      stroke: '#00ccff',
+      strokeThickness: Math.max(3, Math.round(5 * L.s)),
+    }).setOrigin(0.5);
+    container.add(number);
+
+    const sparkles = [
+      this.scene.add.circle(Math.round(-76 * L.s), Math.round(-18 * L.s), Math.max(2, Math.round(3 * L.s)), 0xffffff, 0.9),
+      this.scene.add.circle(Math.round(78 * L.s), Math.round(0 * L.s), Math.max(2, Math.round(4 * L.s)), 0x00ffff, 0.85),
+      this.scene.add.circle(Math.round(58 * L.s), Math.round(50 * L.s), Math.max(2, Math.round(2.5 * L.s)), 0xff44ff, 0.9),
+    ];
+    sparkles.forEach(s => container.add(s));
+
+    this.scene.tweens.add({
+      targets: ring,
+      angle: 360,
+      duration: 4200,
+      repeat: -1,
+      ease: 'Linear',
+    });
+    this.scene.tweens.add({
+      targets: sparkles,
+      alpha: 0.25,
+      scale: 1.8,
+      duration: 750,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: this.scene.tweens.stagger(160),
+    });
+
+    this.elements.prepCountdown = {
+      container, bg, ring, label, number, sparkles,
+      lastValue: null,
+      hideTimer: null,
+    };
+  }
+
+  _drawPrepCountdownBg(gfx, W, H) {
+    gfx.clear();
+    gfx.fillStyle(0x020818, 0.82);
+    gfx.fillRoundedRect(-W / 2, -H / 2, W, H, 8);
+    gfx.lineStyle(2, 0x00ccff, 0.78);
+    gfx.strokeRoundedRect(-W / 2, -H / 2, W, H, 8);
+    gfx.lineStyle(1, 0xff44ff, 0.45);
+    gfx.strokeRoundedRect(-W / 2 + 6, -H / 2 + 6, W - 12, H - 12, 6);
   }
 
   updateWaveDisplay(n) {
@@ -90,6 +179,86 @@ class UISystem {
   }
   updateWaveCountdown(ms) {
     this.elements.countdownText?.setText(ms > 0 ? `Volgende wave: ${(ms/1000).toFixed(1)}s` : '');
+    this._updatePrepCountdown(ms);
+  }
+
+  _updatePrepCountdown(ms) {
+    const el = this.elements.prepCountdown;
+    if (!el) return;
+
+    if (ms > 5000) {
+      this._setPrepCountdownVisible(false);
+      el.lastValue = null;
+      return;
+    }
+
+    const value = ms <= 0 ? 0 : Math.ceil(ms / 1000);
+    this._setPrepCountdownVisible(true);
+
+    if (el.lastValue !== value) {
+      el.lastValue = value;
+      el.number.setText(`${value}`);
+      this._pulsePrepCountdown(value);
+    }
+
+    if (ms <= 0 && !el.hideTimer) {
+      el.hideTimer = this.scene.time.delayedCall(260, () => {
+        this._setPrepCountdownVisible(false);
+        el.lastValue = null;
+        el.hideTimer = null;
+      });
+    }
+  }
+
+  _setPrepCountdownVisible(visible) {
+    const el = this.elements.prepCountdown;
+    if (!el || el.container.visible === visible) return;
+
+    this.scene.tweens.killTweensOf(el.container);
+    if (visible) {
+      el.container.setVisible(true);
+      this.scene.tweens.add({
+        targets: el.container,
+        alpha: 1,
+        scale: 1,
+        duration: 220,
+        ease: 'Back.easeOut',
+      });
+    } else {
+      this.scene.tweens.add({
+        targets: el.container,
+        alpha: 0,
+        scale: 0.92,
+        duration: 180,
+        ease: 'Cubic.easeIn',
+        onComplete: () => el.container.setVisible(false),
+      });
+    }
+  }
+
+  _pulsePrepCountdown(value) {
+    const el = this.elements.prepCountdown;
+    if (!el) return;
+
+    const warning = value <= 1;
+    el.number.setFill(warning ? '#ffff66' : '#ffffff');
+    el.number.setStroke(warning ? '#ff44ff' : '#00ccff', Math.max(3, Math.round(5 * this._L().s)));
+    this.scene.tweens.killTweensOf([el.number, el.bg]);
+    el.number.setScale(0.72).setAlpha(0.65);
+    this.scene.tweens.add({
+      targets: el.number,
+      scale: 1,
+      alpha: 1,
+      duration: 240,
+      ease: 'Back.easeOut',
+    });
+    this.scene.tweens.add({
+      targets: el.bg,
+      alpha: warning ? 1 : 0.78,
+      duration: 120,
+      yoyo: true,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   updateEnemiesRemaining(remaining) {
