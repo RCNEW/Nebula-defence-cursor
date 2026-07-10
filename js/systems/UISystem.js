@@ -516,62 +516,128 @@ class UISystem {
     this._cubeKeyHandlers = null;
   }
 
-  _drawCubeFace(gfx, W, H, theme, hovered) {
-    const d = Math.max(12, Math.round(Math.min(W, H) * 0.16));
-    const left = -W / 2;
-    const right = W / 2;
-    const top = -H / 2;
-    const bottom = H / 2;
-    const faceTop = top + d;
-    const faceLeft = left;
-    const faceRight = right - d;
-    const faceBottom = bottom;
-    const glow = hovered ? 1 : 0.68;
+_drawCubeFace(gfx, W, H, theme, hovered) {
+  const d = Math.max(12, Math.round(Math.min(W, H) * 0.16));
+  const left = -W / 2;
+  const top = -H / 2;
+  const bottom = H / 2;
 
-    gfx.clear();
-    gfx.fillStyle(0x000000, hovered ? 0.32 : 0.24);
-    gfx.fillEllipse(-d * 0.15, bottom + d * 0.35, W * 0.92, d * 0.9);
+  const faceTop = top + d;
+  const faceLeft = left;
+  const faceWidth = W - d;
+  const faceHeight = H - d;
 
-    gfx.fillStyle(theme.border, hovered ? 0.38 : 0.24);
-    gfx.beginPath();
-    gfx.moveTo(faceLeft, faceTop);
-    gfx.lineTo(faceLeft + d, top);
-    gfx.lineTo(right, top);
-    gfx.lineTo(faceRight, faceTop);
-    gfx.closePath();
-    gfx.fillPath();
+  const glow = hovered ? 1 : 0.68;
 
-    gfx.fillStyle(theme.border, hovered ? 0.2 : 0.13);
-    gfx.beginPath();
-    gfx.moveTo(faceRight, faceTop);
-    gfx.lineTo(right, top);
-    gfx.lineTo(right, bottom - d);
-    gfx.lineTo(faceRight, faceBottom);
-    gfx.closePath();
-    gfx.fillPath();
+  gfx.clear();
 
-    gfx.fillStyle(hovered ? 0x0d2040 : theme.bg, 0.98);
-    gfx.fillRoundedRect(faceLeft, faceTop, W - d, H - d, 7);
-    gfx.fillStyle(0xffffff, hovered ? 0.1 : 0.055);
-    gfx.fillRoundedRect(faceLeft + 5, faceTop + 5, W - d - 10, Math.max(12, (H - d) * 0.3), 5);
+  // Schaduw onder de cube
+  gfx.fillStyle(0x000000, hovered ? 0.32 : 0.24);
+  gfx.fillEllipse(-d * 0.15, bottom + d * 0.35, W * 0.92, d * 0.9);
 
-    gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, glow);
-    gfx.strokeRoundedRect(faceLeft, faceTop, W - d, H - d, 7);
-    gfx.lineStyle(hovered ? 1.6 : 1.1, theme.border, hovered ? 0.62 : 0.42);
-    gfx.beginPath();
-    gfx.moveTo(faceLeft, faceTop);
-    gfx.lineTo(faceLeft + d, top);
-    gfx.lineTo(right, top);
-    gfx.lineTo(right, bottom - d);
-    gfx.lineTo(faceRight, faceBottom);
-    gfx.strokePath();
+  // ------------------------------------------------------------
+  // ⭐ Achtervlak (afgerond, volledig zichtbaar)
+  // ------------------------------------------------------------
+  const offsetX = Math.round(d * 1.55);
+  const offsetY = Math.round(d * 0.85);
 
-    gfx.lineStyle(1, 0xffffff, hovered ? 0.18 : 0.1);
-    gfx.beginPath();
-    gfx.moveTo(faceLeft + 10, faceTop + 12);
-    gfx.lineTo(faceRight - 12, faceTop + 12);
-    gfx.strokePath();
-  }
+  const backX = faceLeft + offsetX;
+  const backY = faceTop - offsetY;
+
+  gfx.fillStyle(theme.border, hovered ? 0.22 : 0.14);
+  gfx.fillRoundedRect(backX, backY, faceWidth, faceHeight, 7);
+
+  gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, hovered ? 0.9 : 0.7);
+  gfx.strokeRoundedRect(backX, backY, faceWidth, faceHeight, 7);
+
+  // ------------------------------------------------------------
+  // ⭐ Bovenkant (vulling iets kleiner)
+  // ------------------------------------------------------------
+  const topColor = hovered ? 0x3a5f9c : 0x2e4d82;
+  const topInset = Math.round(d * 0.12);
+
+  gfx.fillStyle(topColor, hovered ? 0.9 : 0.85);
+  gfx.beginPath();
+  gfx.moveTo(faceLeft + topInset, faceTop + topInset);
+  gfx.lineTo(backX + topInset, backY + topInset);
+  gfx.lineTo(backX + faceWidth - topInset, backY + topInset);
+  gfx.lineTo(faceLeft + faceWidth - topInset, faceTop + topInset);
+  gfx.closePath();
+  gfx.fillPath();
+
+  // ------------------------------------------------------------
+  // ⭐ Rechterkant (vulling iets kleiner)
+  // ------------------------------------------------------------
+  const sideColor = hovered ? 0x1c2d4f : 0x162544;
+  const sideInset = Math.round(d * 0.12);
+
+  gfx.fillStyle(sideColor, hovered ? 0.9 : 0.85);
+  gfx.beginPath();
+  gfx.moveTo(faceLeft + faceWidth - sideInset, faceTop + sideInset);
+  gfx.lineTo(backX + faceWidth - sideInset, backY + sideInset);
+  gfx.lineTo(backX + faceWidth - sideInset, backY + faceHeight - sideInset);
+  gfx.lineTo(faceLeft + faceWidth - sideInset, faceTop + faceHeight - sideInset);
+  gfx.closePath();
+  gfx.fillPath();
+
+  // ------------------------------------------------------------
+  // ⭐ Voorvlak
+  // ------------------------------------------------------------
+  gfx.fillStyle(hovered ? 0x0d2040 : theme.bg, 0.98);
+  gfx.fillRoundedRect(faceLeft, faceTop, faceWidth, faceHeight, 7);
+
+  gfx.fillStyle(0xffffff, hovered ? 0.1 : 0.055);
+  gfx.fillRoundedRect(
+    faceLeft + 5,
+    faceTop + 5,
+    faceWidth - 10,
+    Math.max(12, faceHeight * 0.3),
+    5
+  );
+
+  gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, glow);
+  gfx.strokeRoundedRect(faceLeft, faceTop, faceWidth, faceHeight, 7);
+
+  // ------------------------------------------------------------
+  // ⭐ 3D‑verbindingslijnen — nu perfect aansluitend
+  // ------------------------------------------------------------
+  gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, hovered ? 0.9 : 0.7);
+
+  const insetFront = Math.round(d * 0.18); // lijnen beginnen eerder
+  const insetBack  = Math.round(d * 0.18); // lijnen stoppen eerder
+
+  // Linker bovenhoek → achtervlak bovenhoek
+  gfx.beginPath();
+  gfx.moveTo(faceLeft + insetFront, faceTop + insetFront);
+  gfx.lineTo(backX + insetBack, backY + insetBack);
+  gfx.strokePath();
+
+  // Rechter bovenhoek → achtervlak bovenhoek
+  gfx.beginPath();
+  gfx.moveTo(faceLeft + faceWidth - insetFront, faceTop + insetFront);
+  gfx.lineTo(backX + faceWidth - insetBack, backY + insetBack);
+  gfx.strokePath();
+
+  // Rechter onderhoek → achtervlak onderhoek
+  gfx.beginPath();
+  gfx.moveTo(faceLeft + faceWidth - insetFront, faceTop + faceHeight - insetFront);
+  gfx.lineTo(backX + faceWidth - insetBack, backY + faceHeight - insetBack);
+  gfx.strokePath();
+
+  // ------------------------------------------------------------
+  // Dunne highlight-lijn bovenop het voorvlak
+  // ------------------------------------------------------------
+  gfx.lineStyle(1, 0xffffff, hovered ? 0.18 : 0.1);
+  gfx.beginPath();
+  gfx.moveTo(faceLeft + 10, faceTop + 12);
+  gfx.lineTo(faceLeft + faceWidth - 12, faceTop + 12);
+  gfx.strokePath();
+}
+
+
+
+
+
 
   _getActiveCubeDef(id) {
     const ds = this.scene.defenseSystem;
@@ -1349,11 +1415,16 @@ class UISystem {
     const btnBg = this.scene.add.graphics().setDepth(403);
     const drawBtn = (hovered) => {
       btnBg.clear();
+      // Achtergrondlaag voor 3D-effect (schaduw)
+      btnBg.fillStyle(0x000000, 0.3);
+      btnBg.fillRoundedRect(cx - btnW / 2 + 2, btnY - btnH / 2 + 2, btnW, btnH, 12);
+      // Voorste laag (hoofdbutton)
       btnBg.fillStyle(hovered ? 0x0055cc : 0x003388, 0.97);
       btnBg.lineStyle(3, hovered ? 0x44aaff : 0x0077ff, 1);
       btnBg.fillRoundedRect(cx - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
       btnBg.strokeRoundedRect(cx - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
     };
+    
     drawBtn(false);
 
     this.scene.add.text(cx, btnY, '↺  OPNIEUW SPELEN', {
@@ -1378,6 +1449,13 @@ class UISystem {
   _makeButton(x, y, w, h, label, bgCol, borderCol, fontSize = 14) {
     const container = this.scene.add.container(x, y).setDepth(65);
 
+    // Achtergrondlaag voor 3D-effect (schaduw)
+    const shadow = this.scene.add.graphics();
+    shadow.fillStyle(0x000000, 0.3);
+    shadow.fillRoundedRect(-w/2 + 2, -h/2 + 2, w, h, 6);
+    container.add(shadow);
+
+    // Voorste laag (hoofdbutton)
     const bg = this.scene.add.graphics();
     bg.fillStyle(bgCol, 0.95);
     bg.lineStyle(1.5, borderCol, 0.8);
