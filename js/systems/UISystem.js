@@ -876,20 +876,96 @@ class UISystem {
     gfx.fillPath();
   }
 
+  // Upgrade/Verwijder-knoppen — zelfde visuele stijl als de Special Buttons
+  // (zelfde beveled-hex knopvorm via _mixColor), maar uitsluitend een icoon.
   _buildActionButtons() {
-    const L   = this._L();
-    const Y   = L.ACTION_BTN_Y;
-    const bW  = L.BTN_W;
-    const bH  = Math.round(90 * L.sy);
-    const fs  = Math.round(14 * L.sy);
+    const L  = this._L();
+    const Y  = L.ACTION_BTN_Y;
+    const bW = L.BTN_W;
+    const bH = Math.round(90 * L.sy);
 
-    const upgBtn = this._makeButton(L.UPGRADE_BTN_X, Y, bW, bH, '⬆ UPGRADE\n[U]', 0x102040, 0x00aaff, fs);
-    upgBtn.on('pointerdown', () => this.scene.defenseSystem?.upgradeSelected());
+    const upgBtn = this._makeIconActionButton(L.UPGRADE_BTN_X, Y, bW, bH, '⬆️', 0x00aaff);
+    upgBtn.hit.on('pointerdown', () => this.scene.defenseSystem?.upgradeSelected());
     this.elements.upgradeBtn = upgBtn;
 
-    const remBtn = this._makeButton(L.REMOVE_BTN_X, Y, bW, bH, '🗑 VERWIJDER\n[Del]', 0x200a0a, 0xff4444, fs);
-    remBtn.on('pointerdown', () => this.scene.defenseSystem?.removeSelected());
+    const remBtn = this._makeIconActionButton(L.REMOVE_BTN_X, Y, bW, bH, '🗑️', 0xff4444);
+    remBtn.hit.on('pointerdown', () => this.scene.defenseSystem?.removeSelected());
     this.elements.removeBtn = remBtn;
+  }
+
+  _makeIconActionButton(x, y, w, h, icon, color) {
+    const container = this.scene.add.container(x, y).setDepth(60);
+
+    const bg = this.scene.add.graphics();
+    container.add(bg);
+
+    const iconT = this.scene.add.text(0, Math.round(3 * (h / 90)), icon, {
+      fontSize: `${Math.round(44 * (h / 90))}px`,
+    }).setOrigin(0.5).setDepth(61);
+    container.add(iconT);
+
+    const hit = this.scene.add.rectangle(0, 0, w, h, 0xffffff, 0).setInteractive().setDepth(62);
+    container.add(hit);
+
+    const btn = { container, bg, iconT, hit, color, W: w, H: h, hovered: false };
+
+    hit.on('pointerover', () => { btn.hovered = true; this._drawActionButtonFace(btn); });
+    hit.on('pointerout',  () => { btn.hovered = false; this._drawActionButtonFace(btn); });
+
+    this._drawActionButtonFace(btn);
+    return btn;
+  }
+
+  _drawActionButtonFace(btn) {
+    const W = btn.W, H = btn.H;
+    const d = Math.max(10, Math.round(Math.min(W, H) * 0.16));
+    const faceW = W - d;
+    const faceH = H - d;
+    const faceLeft  = -W / 2;
+    const faceTop   = -H / 2 + d;
+    const faceRight = W / 2 - d;
+    const color   = btn.color;
+    const hovered = !!btn.hovered;
+    const faceFill = hovered
+      ? this._mixColor(color, 0xffffff, 0.28)
+      : this._mixColor(color, 0x000000, 0.68);
+
+    btn.bg.clear();
+    btn.bg.fillStyle(0x000000, hovered ? 0.32 : 0.24);
+    btn.bg.fillEllipse(-d * 0.15, H / 2 + d * 0.35, W * 0.92, d * 0.9);
+
+    btn.bg.fillStyle(color, hovered ? 0.58 : 0.44);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceLeft, faceTop);
+    btn.bg.lineTo(faceLeft + d, -H / 2);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(faceRight, faceTop);
+    btn.bg.closePath();
+    btn.bg.fillPath();
+
+    btn.bg.fillStyle(color, hovered ? 0.34 : 0.24);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceRight, faceTop);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(W / 2, H / 2 - d);
+    btn.bg.lineTo(faceRight, H / 2);
+    btn.bg.closePath();
+    btn.bg.fillPath();
+
+    btn.bg.fillStyle(faceFill, 0.9);
+    btn.bg.fillRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
+    btn.bg.lineStyle(hovered ? 3.1 : 2.6, color, hovered ? 1 : 0.85);
+    btn.bg.strokeRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
+    btn.bg.lineStyle(1.1, color, hovered ? 0.62 : 0.5);
+    btn.bg.beginPath();
+    btn.bg.moveTo(faceLeft, faceTop);
+    btn.bg.lineTo(faceLeft + d, -H / 2);
+    btn.bg.lineTo(W / 2, -H / 2);
+    btn.bg.lineTo(W / 2, H / 2 - d);
+    btn.bg.lineTo(faceRight, H / 2);
+    btn.bg.strokePath();
+
+    btn.iconT.setScale(hovered ? 1.1 : 1);
   }
 
   _buildDefenseInfoPanel() {
