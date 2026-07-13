@@ -517,124 +517,264 @@ class UISystem {
   }
 
 _drawCubeFace(gfx, W, H, theme, hovered) {
-  const d = Math.max(12, Math.round(Math.min(W, H) * 0.16));
-  const left = -W / 2;
-  const top = -H / 2;
-  const bottom = H / 2;
-
-  const faceTop = top + d;
-  const faceLeft = left;
-  const faceWidth = W - d;
-  const faceHeight = H - d;
-
-  const glow = hovered ? 1 : 0.68;
-
   gfx.clear();
 
-  // Schaduw onder de cube
-  gfx.fillStyle(0x000000, hovered ? 0.32 : 0.24);
-  gfx.fillEllipse(-d * 0.15, bottom + d * 0.35, W * 0.92, d * 0.9);
+  const size = Math.min(W, H) * 0.6;
+  const half = size / 2;
+
+  const cx = 0;
+  const cy = 0;
+
+  const depthX = size * 0.35;
+  const depthY = size * 0.25;
+
+  const frontX = cx - half;
+  const frontY = cy - half;
+  const frontW = size;
+  const frontH = size;
+
+  const radius = size * 0.12;
+  const glow = hovered ? 1 : 0.8;
 
   // ------------------------------------------------------------
-  // ⭐ Achtervlak (afgerond, volledig zichtbaar)
+  // VOORVLAK HOEKPUNTEN
   // ------------------------------------------------------------
-  const offsetX = Math.round(d * 1.55);
-  const offsetY = Math.round(d * 0.85);
-
-  const backX = faceLeft + offsetX;
-  const backY = faceTop - offsetY;
-
-  gfx.fillStyle(theme.border, hovered ? 0.22 : 0.14);
-  gfx.fillRoundedRect(backX, backY, faceWidth, faceHeight, 7);
-
-  gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, hovered ? 0.9 : 0.7);
-  gfx.strokeRoundedRect(backX, backY, faceWidth, faceHeight, 7);
+  const FTL = { x: frontX,           y: frontY };
+  const FTR = { x: frontX + frontW,  y: frontY };
+  const FBL = { x: frontX,           y: frontY + frontH };
+  const FBR = { x: frontX + frontW,  y: frontY + frontH };
 
   // ------------------------------------------------------------
-  // ⭐ Bovenkant (vulling iets kleiner)
+  // ACHTERVLAK HOEKPUNTEN
   // ------------------------------------------------------------
-  const topColor = hovered ? 0x3a5f9c : 0x2e4d82;
-  const topInset = Math.round(d * 0.12);
+  const BTL = { x: FTL.x + depthX, y: FTL.y - depthY };
+  const BTR = { x: FTR.x + depthX, y: FTR.y - depthY };
+  const BBL = { x: FBL.x + depthX, y: FBL.y - depthY };
+  const BBR = { x: FBR.x + depthX, y: FBR.y - depthY };
 
-  gfx.fillStyle(topColor, hovered ? 0.9 : 0.85);
+  // ------------------------------------------------------------
+  // OFFSET-PUNTEN (ALLEEN DEZE LIJNEN BLIJVEN BESTAAN)
+  // ------------------------------------------------------------
+
+  // 1. Linkerbovenhoek → iets naar rechts
+  const FTL_offset = { x: FTL.x + size * 0.08, y: FTL.y };
+  const BTL_offset = { x: FTL_offset.x + depthX, y: FTL_offset.y - depthY };
+
+  // 2a. Rechterbovenhoek → iets meer naar links
+  const FTR_offset_left = { x: FTR.x - size * 0.10, y: FTR.y };
+  const BTR_offset_left = { x: FTR_offset_left.x + depthX, y: FTR_offset_left.y - depthY };
+
+  // 2b. Rechterbovenhoek → iets meer naar beneden
+  const FTR_offset_down = { x: FTR.x, y: FTR.y + size * 0.10 };
+  const BTR_offset_down = { x: FTR_offset_down.x + depthX, y: FTR_offset_down.y - depthY };
+
+  // 3. Rechteronderhoek → hoger starten
+  const FBR_offset_up = { x: FBR.x, y: FBR.y - size * 0.12 };
+  const BBR_offset_up = { x: FBR_offset_up.x + depthX, y: FBR_offset_up.y - depthY };
+
+  // ------------------------------------------------------------
+  // SCHADUW
+  // ------------------------------------------------------------
+  gfx.fillStyle(0x000000, hovered ? 0.30 : 0.22);
+  //gfx.fillEllipse(cx, cy + half + depthY * 0.8, size * 1.1, depthY * 1.4);
+
+  gfx.lineStyle(hovered ? 2.4 : 1.8, theme.border, hovered ? 0.9 : 0.7);
+  //gfx.strokePath();
+
+  gfx.lineStyle(hovered ? 2.4 : 1.8, theme.border, hovered ? 0.9 : 0.7);
+  //gfx.strokePath();
+
+
+  // ------------------------------------------------------------
+  // JOUW NIEUWE VERBINDINGSLIJNEN (ALLEEN DEZE!)
+  // ------------------------------------------------------------
+  gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
+
+  // 2a. Rechterbovenhoek → offset left
   gfx.beginPath();
-  gfx.moveTo(faceLeft + topInset, faceTop + topInset);
-  gfx.lineTo(backX + topInset, backY + topInset);
-  gfx.lineTo(backX + faceWidth - topInset, backY + topInset);
-  gfx.lineTo(faceLeft + faceWidth - topInset, faceTop + topInset);
+  gfx.moveTo(FTR_offset_left.x, FTR_offset_left.y);
+  gfx.lineTo(BTR_offset_left.x, BTR_offset_left.y);
+  //gfx.strokePath();
+
+  // 2b. Rechterbovenhoek → offset down
+  gfx.beginPath();
+  gfx.moveTo(FTR_offset_down.x, FTR_offset_down.y);
+  gfx.lineTo(BTR_offset_down.x, BTR_offset_down.y);
+  //gfx.strokePath();
+
+
+
+
+  // 1. Linkerbovenhoek → offset
+  gfx.beginPath();
+  gfx.moveTo(FTL_offset.x, FTL_offset.y);
+  gfx.lineTo(BTL_offset.x, BTL_offset.y);
+  gfx.strokePath();
+
+  // ------------------------------------------------------------
+  // RECHTER VLAK (donker)
+  // ------------------------------------------------------------
+
+
+/*
+
+
+  gfx.fillStyle(
+    Phaser.Display.Color.Interpolate.ColorWithColor(
+      Phaser.Display.Color.ValueToColor(theme.bg),
+      Phaser.Display.Color.ValueToColor(theme.bg).darken(60),
+      100,
+      hovered ? 65 : 45
+    ).color,
+    1
+  );
+  
+
+  gfx.beginPath();
+  gfx.moveTo(FTR.x, FTR.y);
+  gfx.lineTo(FBR.x, FBR.y);
+  gfx.lineTo(BBR.x, BBR.y);
+  gfx.lineTo(BTR.x, BTR.y);
   gfx.closePath();
   gfx.fillPath();
 
-  // ------------------------------------------------------------
-  // ⭐ Rechterkant (vulling iets kleiner)
-  // ------------------------------------------------------------
-  const sideColor = hovered ? 0x1c2d4f : 0x162544;
-  const sideInset = Math.round(d * 0.12);
+*/
 
-  gfx.fillStyle(sideColor, hovered ? 0.9 : 0.85);
-  gfx.beginPath();
-  gfx.moveTo(faceLeft + faceWidth - sideInset, faceTop + sideInset);
-  gfx.lineTo(backX + faceWidth - sideInset, backY + sideInset);
-  gfx.lineTo(backX + faceWidth - sideInset, backY + faceHeight - sideInset);
-  gfx.lineTo(faceLeft + faceWidth - sideInset, faceTop + faceHeight - sideInset);
-  gfx.closePath();
-  gfx.fillPath();
+  // 3. Rechteronderhoek → offset up
+  const border = Phaser.Display.Color.ValueToColor(theme.border);
 
-  // ------------------------------------------------------------
-  // ⭐ Voorvlak
-  // ------------------------------------------------------------
-  gfx.fillStyle(hovered ? 0x0d2040 : theme.bg, 0.98);
-  gfx.fillRoundedRect(faceLeft, faceTop, faceWidth, faceHeight, 7);
+  // verlaag de RGB‑waarden met een factor (0.0–1.0)
+  const factor = 0.60;   // 60% van de originele helderheid
 
-  gfx.fillStyle(0xffffff, hovered ? 0.1 : 0.055);
-  gfx.fillRoundedRect(
-    faceLeft + 5,
-    faceTop + 5,
-    faceWidth - 10,
-    Math.max(12, faceHeight * 0.3),
-    5
+  const darkerBorder = Phaser.Display.Color.GetColor(
+    border.r * factor,
+    border.g * factor,
+    border.b * factor
   );
 
-  gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, glow);
-  gfx.strokeRoundedRect(faceLeft, faceTop, faceWidth, faceHeight, 7);
+
+
+// ------------------------------------------------------------
+// RECHTER VLAK — TESTGRADIENT MET JOUW ECHTE KLEUR BOVENAAN
+// ------------------------------------------------------------
+
+  // Jouw echte kleur bovenaan
+  const base = Phaser.Display.Color.ValueToColor(theme.bg).darken(80);
+
+  const topColorFactor = 0.70;
+  //const topColor = Phaser.Display.Color.GetColor(255, 0, 0);
+
+  const topColor = Phaser.Display.Color.GetColor(base.r * topColorFactor, base.g * topColorFactor, base.b * topColorFactor);
+
+  
+  // Midden blijft blauw (test)
+  const middleColorFactor = 0.50;
+  const middleColor = Phaser.Display.Color.GetColor(base.r * middleColorFactor, base.g * middleColorFactor, base.b * middleColorFactor);
+
+  // Onder blijft zwart (test)
+  const bottomColorFactor = 0.40;
+  const bottomColor = Phaser.Display.Color.GetColor(base.r * bottomColorFactor, base.g * bottomColorFactor, base.b * bottomColorFactor);
+
+
+  // Hoogtes bepalen
+  const topY    = FTR.y;
+  const bottomY = FBR.y;
+
+  // Gradient begint pas vanaf 15% van de hoogte
+  const offsetY = topY + (bottomY - topY) * 0.15;
 
   // ------------------------------------------------------------
-  // ⭐ 3D‑verbindingslijnen — nu perfect aansluitend
+  // BOVENSTE DEEL RECHTER VLAK
   // ------------------------------------------------------------
-  gfx.lineStyle(hovered ? 2.4 : 1.7, theme.border, hovered ? 0.9 : 0.7);
-
-  const insetFront = Math.round(d * 0.18); // lijnen beginnen eerder
-  const insetBack  = Math.round(d * 0.18); // lijnen stoppen eerder
-
-  // Linker bovenhoek → achtervlak bovenhoek
+  
+  // RC -1 Hack
+  gfx.fillStyle(topColor, 1);
   gfx.beginPath();
-  gfx.moveTo(faceLeft + insetFront, faceTop + insetFront);
-  gfx.lineTo(backX + insetBack, backY + insetBack);
-  gfx.strokePath();
+  gfx.moveTo(FTR_offset_left.x, FTR.y);
+  gfx.lineTo(FTR.x, offsetY);
+  gfx.lineTo(BTR.x, offsetY - depthY );
+  gfx.lineTo(BTR.x -1, BTR.y);
+  gfx.closePath();
+  gfx.fillPath();
 
-  // Rechter bovenhoek → achtervlak bovenhoek
-  gfx.beginPath();
-  gfx.moveTo(faceLeft + faceWidth - insetFront, faceTop + insetFront);
-  gfx.lineTo(backX + faceWidth - insetBack, backY + insetBack);
-  gfx.strokePath();
 
-  // Rechter onderhoek → achtervlak onderhoek
-  gfx.beginPath();
-  gfx.moveTo(faceLeft + faceWidth - insetFront, faceTop + faceHeight - insetFront);
-  gfx.lineTo(backX + faceWidth - insetBack, backY + faceHeight - insetBack);
-  gfx.strokePath();
+  const midY = offsetY + (bottomY - offsetY) * 0.8;
 
   // ------------------------------------------------------------
-  // Dunne highlight-lijn bovenop het voorvlak
+  // ACHTERVLAK (nu ook afgeronde hoeken)
   // ------------------------------------------------------------
-  gfx.lineStyle(1, 0xffffff, hovered ? 0.18 : 0.1);
+  gfx.fillStyle(theme.border, hovered ? 0.18 : 0.12);
+  //gfx.fillRoundedRect(BTL.x, BTL.y, frontW, frontH, radius);
+
+  gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
+  gfx.strokeRoundedRect(BTL.x, BTL.y, frontW, frontH, radius);
+
+  // ------------------------------------------------------------
+  // ONDERSTE DEEL RECHTER VLAK — DONKER 
+  // ------------------------------------------------------------
+  
+  // RC -2 hack
+  gfx.fillStyle(bottomColor, 1);
   gfx.beginPath();
-  gfx.moveTo(faceLeft + 10, faceTop + 12);
-  gfx.lineTo(faceLeft + faceWidth - 12, faceTop + 12);
+  gfx.moveTo(FBR.x, FBR.y);
+  gfx.lineTo(FBR.x-2, midY);
+  gfx.lineTo(BBR.x-2, midY - depthY);
+  gfx.lineTo(BBR.x-2, BBR.y);
+  gfx.closePath();
+  gfx.fillPath();
+
+
+    // ------------------------------------------------------------
+    // MIDDENSTROOK RECHTERVLAK 
+    // ------------------------------------------------------------
+
+    //RC -2 hack
+    gfx.fillStyle(middleColor, 1);
+    gfx.beginPath();
+    gfx.moveTo(FTR.x, offsetY);
+    gfx.lineTo(FBR.x-1, midY);
+    gfx.lineTo(BBR.x-1, midY - depthY);
+    gfx.lineTo(BTR.x-1, offsetY - depthY);
+    gfx.closePath();
+    gfx.fillPath();
+
+  // ------------------------------------------------------------
+  // TOPVLAK (licht)
+  // ------------------------------------------------------------
+  gfx.fillStyle(
+    Phaser.Display.Color.Interpolate.ColorWithColor(
+      Phaser.Display.Color.ValueToColor(theme.bg),
+      Phaser.Display.Color.ValueToColor(theme.bg).darken(90),
+      100,
+      hovered ? 65 : 45
+    ).color,
+    1
+  );
+
+  gfx.beginPath();
+  gfx.moveTo(FTL_offset.x, FTL.y);
+  gfx.lineTo(FTR_offset_left.x, FTR_offset_left.y+1);
+  gfx.lineTo(BTR.x, BTR_offset_left.y+1);
+  gfx.lineTo(BTL_offset.x, BTL.y+1);
+  gfx.closePath();
+  gfx.fillPath();
+
+  // ------------------------------------------------------------
+  // VOORVLAK (afgeronde hoeken)
+  // ------------------------------------------------------------
+  gfx.fillStyle(theme.bg, 1);
+  gfx.fillRoundedRect(frontX, frontY, frontW, frontH, radius);
+
+  gfx.lineStyle(hovered ? 2.6 : 2.0, theme.border, glow);
+  gfx.strokeRoundedRect(frontX, frontY, frontW, frontH, radius);
+
+  gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
+  gfx.beginPath();
+  gfx.moveTo(FBR_offset_up.x, FBR_offset_up.y+3);
+  gfx.lineTo(BBR_offset_up.x, BBR_offset_up.y+3);
   gfx.strokePath();
+
 }
-
-
 
 
 
