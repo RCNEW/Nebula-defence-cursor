@@ -371,46 +371,24 @@ class UISystem {
   }
 
   _drawSpeedButton(btn) {
-    const W = btn.W, H = btn.H;
-    const d = Math.max(6, Math.round(Math.min(W, H) * 0.18));
-    const faceW = W - d;
-    const faceH = H - d;
-    const faceLeft = -W / 2;
-    const faceTop = -H / 2 + d;
-    const faceRight = W / 2 - d;
     const color = btn.color ?? 0x00ccff;
     const active = !!btn.active;
     const hovered = !!btn.hovered;
+    
+    // Bereken de faceFill analoog aan de originele logica
     const faceFill = active
       ? (hovered ? this._mixColor(color, 0xffffff, 0.24) : this._mixColor(color, 0x000000, 0.62))
       : (hovered ? 0x102446 : 0x081428);
 
-    btn.bg.clear();
-    btn.bg.fillStyle(0x000000, hovered ? 0.3 : 0.22);
-    btn.bg.fillEllipse(-d * 0.15, H / 2 + d * 0.35, W * 0.88, d * 0.9);
+    // Maak een tijdelijk theme object aan dat _drawCubeFace begrijpt
+    const theme = {
+      bg: faceFill,
+      border: color
+    };
 
-    btn.bg.fillStyle(color, active ? hovered ? 0.55 : 0.42 : hovered ? 0.28 : 0.2);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceLeft, faceTop);
-    btn.bg.lineTo(faceLeft + d, -H / 2);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(faceRight, faceTop);
-    btn.bg.closePath();
-    btn.bg.fillPath();
-
-    btn.bg.fillStyle(color, active ? hovered ? 0.32 : 0.23 : hovered ? 0.16 : 0.1);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceRight, faceTop);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(W / 2, H / 2 - d);
-    btn.bg.lineTo(faceRight, H / 2);
-    btn.bg.closePath();
-    btn.bg.fillPath();
-
-    btn.bg.fillStyle(faceFill, active ? 0.92 : 0.98);
-    btn.bg.fillRoundedRect(faceLeft, faceTop, faceW, faceH, 6);
-    btn.bg.lineStyle(active ? hovered ? 2.7 : 2.3 : hovered ? 1.9 : 1.4, color, active ? 1 : hovered ? 0.85 : 0.58);
-    btn.bg.strokeRoundedRect(faceLeft, faceTop, faceW, faceH, 6);
+    // Teken via de uniforme _drawCubeFace functie met een vaste diepte-offset ratio
+    this._drawCubeFace(btn.bg, btn.W, btn.H, theme, hovered, 0.15);
+    
     btn.iconT.setAlpha(active ? 1 : 0.86);
     btn.iconT.setScale(hovered ? 1.08 : 1);
   }
@@ -451,7 +429,7 @@ class UISystem {
       }).setOrigin(0.5).setDepth(61).setVisible(false);
       container.add(nameT);
 
-      const costT = this.scene.add.text(W * 0.28, fs(5), '?', {
+      const costT = this.scene.add.text(W * 0.10, fs(5), '?', {
         fontSize: `${fs(34)}px`, fill: CONFIG.THEME.ENERGY_COLOR,
         fontFamily: CONFIG.THEME.FONT_MAIN, fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(61);
@@ -516,268 +494,139 @@ class UISystem {
     this._cubeKeyHandlers = null;
   }
 
-_drawCubeFace(gfx, W, H, theme, hovered) {
-  gfx.clear();
+  _drawCubeFace(gfx, W, H, theme, hovered, depth = 0.2) {
+    gfx.clear();
 
-  const size = Math.min(W, H) * 0.6;
-  const half = size / 2;
+    // Bepaal de grootte van het voorvlak op basis van de meegegeven W en H
+    const frontW = W * 0.8;
+    const frontH = H * 0.8;
 
-  const cx = 0;
-  const cy = 0;
+    // Centreren van de kubus in de beschikbare ruimte, rekening houdend met de diepte-offset
+    const depthX = frontW * depth;
+    const depthY = frontH * depth * 0.7; // Licht perspectief (iets platter in de Y-as)
 
-  const depthX = size * 0.35;
-  const depthY = size * 0.25;
+    const cx = 0;
+    const cy = 0;
+    const frontX = cx - (frontW + depthX) / 2;
+    const frontY = cy - (frontH - depthY) / 2;
 
-  const frontX = cx - half;
-  const frontY = cy - half;
-  const frontW = size;
-  const frontH = size;
+    // Bereken de afrondingsstraal op basis van de schaal
+    const radius = Math.min(frontW, frontH) * 0.15;
+    const glow = hovered ? 1 : 0.8;
 
-  const radius = size * 0.12;
-  const glow = hovered ? 1 : 0.8;
+    // Coordinaten achtervlak
+    const backX = frontX + depthX;
+    const backY = frontY - depthY;
 
-  // ------------------------------------------------------------
-  // VOORVLAK HOEKPUNTEN
-  // ------------------------------------------------------------
-  const FTL = { x: frontX,           y: frontY };
-  const FTR = { x: frontX + frontW,  y: frontY };
-  const FBL = { x: frontX,           y: frontY + frontH };
-  const FBR = { x: frontX + frontW,  y: frontY + frontH };
+    // ------------------------------------------------------------
+    // KLEUREN EN GRADIENTS BEPALEN
+    // ------------------------------------------------------------
+    const baseColor = Phaser.Display.Color.ValueToColor(theme.bg);
 
-  // ------------------------------------------------------------
-  // ACHTERVLAK HOEKPUNTEN
-  // ------------------------------------------------------------
-  const BTL = { x: FTL.x + depthX, y: FTL.y - depthY };
-  const BTR = { x: FTR.x + depthX, y: FTR.y - depthY };
-  const BBL = { x: FBL.x + depthX, y: FBL.y - depthY };
-  const BBR = { x: FBR.x + depthX, y: FBR.y - depthY };
+    // Topvlak (lichter)
+    const topColor = Phaser.Display.Color.Interpolate.ColorWithColor(
+      baseColor,
+      baseColor.clone().darken(100),
+      100,
+      hovered ? 20 : 40
+    ).color;
 
-  // ------------------------------------------------------------
-  // OFFSET-PUNTEN (ALLEEN DEZE LIJNEN BLIJVEN BESTAAN)
-  // ------------------------------------------------------------
-
-  // 1. Linkerbovenhoek → iets naar rechts
-  const FTL_offset = { x: FTL.x + size * 0.08, y: FTL.y };
-  const BTL_offset = { x: FTL_offset.x + depthX, y: FTL_offset.y - depthY };
-
-  // 2a. Rechterbovenhoek → iets meer naar links
-  const FTR_offset_left = { x: FTR.x - size * 0.10, y: FTR.y };
-  const BTR_offset_left = { x: FTR_offset_left.x + depthX, y: FTR_offset_left.y - depthY };
-
-  // 2b. Rechterbovenhoek → iets meer naar beneden
-  const FTR_offset_down = { x: FTR.x, y: FTR.y + size * 0.10 };
-  const BTR_offset_down = { x: FTR_offset_down.x + depthX, y: FTR_offset_down.y - depthY };
-
-  // 3. Rechteronderhoek → hoger starten
-  const FBR_offset_up = { x: FBR.x, y: FBR.y - size * 0.12 };
-  const BBR_offset_up = { x: FBR_offset_up.x + depthX, y: FBR_offset_up.y - depthY };
-
-  // ------------------------------------------------------------
-  // SCHADUW
-  // ------------------------------------------------------------
-  gfx.fillStyle(0x000000, hovered ? 0.30 : 0.22);
-  //gfx.fillEllipse(cx, cy + half + depthY * 0.8, size * 1.1, depthY * 1.4);
-
-  gfx.lineStyle(hovered ? 2.4 : 1.8, theme.border, hovered ? 0.9 : 0.7);
-  //gfx.strokePath();
-
-  gfx.lineStyle(hovered ? 2.4 : 1.8, theme.border, hovered ? 0.9 : 0.7);
-  //gfx.strokePath();
-
-
-  // ------------------------------------------------------------
-  // JOUW NIEUWE VERBINDINGSLIJNEN (ALLEEN DEZE!)
-  // ------------------------------------------------------------
-  gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
-
-  // 2a. Rechterbovenhoek → offset left
-  gfx.beginPath();
-  gfx.moveTo(FTR_offset_left.x, FTR_offset_left.y);
-  gfx.lineTo(BTR_offset_left.x, BTR_offset_left.y);
-  //gfx.strokePath();
-
-  // 2b. Rechterbovenhoek → offset down
-  gfx.beginPath();
-  gfx.moveTo(FTR_offset_down.x, FTR_offset_down.y);
-  gfx.lineTo(BTR_offset_down.x, BTR_offset_down.y);
-  //gfx.strokePath();
-
-
-
-
-  // 1. Linkerbovenhoek → offset
-  gfx.beginPath();
-  gfx.moveTo(FTL_offset.x, FTL_offset.y);
-  gfx.lineTo(BTL_offset.x, BTL_offset.y);
-  gfx.strokePath();
-
-  // ------------------------------------------------------------
-  // RECHTER VLAK (donker)
-  // ------------------------------------------------------------
-
-
-/*
-
-
-  gfx.fillStyle(
-    Phaser.Display.Color.Interpolate.ColorWithColor(
-      Phaser.Display.Color.ValueToColor(theme.bg),
-      Phaser.Display.Color.ValueToColor(theme.bg).darken(60),
+    // Rechtervlak (donkerder)
+    const rightColor = Phaser.Display.Color.Interpolate.ColorWithColor(
+      baseColor,
+      baseColor.clone().darken(90),
       100,
       hovered ? 65 : 45
-    ).color,
-    1
-  );
-  
+    ).color;
 
-  gfx.beginPath();
-  gfx.moveTo(FTR.x, FTR.y);
-  gfx.lineTo(FBR.x, FBR.y);
-  gfx.lineTo(BBR.x, BBR.y);
-  gfx.lineTo(BTR.x, BTR.y);
-  gfx.closePath();
-  gfx.fillPath();
+    // Cornervlak top / Achtervlak (nog donkerder voor schaduw aan de onder/achterkant)
+    const cornerColor = Phaser.Display.Color.Interpolate.ColorWithColor(
+      baseColor,
+      baseColor.clone().darken(85),
+      100,
+      hovered ? 65 : 45
+    ).color;
 
-*/
-
-  // 3. Rechteronderhoek → offset up
-  const border = Phaser.Display.Color.ValueToColor(theme.border);
-
-  // verlaag de RGB‑waarden met een factor (0.0–1.0)
-  const factor = 0.60;   // 60% van de originele helderheid
-
-  const darkerBorder = Phaser.Display.Color.GetColor(
-    border.r * factor,
-    border.g * factor,
-    border.b * factor
-  );
-
-
-
-// ------------------------------------------------------------
-// RECHTER VLAK — TESTGRADIENT MET JOUW ECHTE KLEUR BOVENAAN
-// ------------------------------------------------------------
-
-  // Jouw echte kleur bovenaan
-  const base = Phaser.Display.Color.ValueToColor(theme.bg).darken(80);
-
-  const topColorFactor = 0.70;
-  //const topColor = Phaser.Display.Color.GetColor(255, 0, 0);
-
-  const topColor = Phaser.Display.Color.GetColor(base.r * topColorFactor, base.g * topColorFactor, base.b * topColorFactor);
-
-  
-  // Midden blijft blauw (test)
-  const middleColorFactor = 0.50;
-  const middleColor = Phaser.Display.Color.GetColor(base.r * middleColorFactor, base.g * middleColorFactor, base.b * middleColorFactor);
-
-  // Onder blijft zwart (test)
-  const bottomColorFactor = 0.40;
-  const bottomColor = Phaser.Display.Color.GetColor(base.r * bottomColorFactor, base.g * bottomColorFactor, base.b * bottomColorFactor);
-
-
-  // Hoogtes bepalen
-  const topY    = FTR.y;
-  const bottomY = FBR.y;
-
-  // Gradient begint pas vanaf 15% van de hoogte
-  const offsetY = topY + (bottomY - topY) * 0.15;
-
-  // ------------------------------------------------------------
-  // BOVENSTE DEEL RECHTER VLAK
-  // ------------------------------------------------------------
-  
-  // RC -1 Hack
-  gfx.fillStyle(topColor, 1);
-  gfx.beginPath();
-  gfx.moveTo(FTR_offset_left.x, FTR.y);
-  gfx.lineTo(FTR.x, offsetY);
-  gfx.lineTo(BTR.x, offsetY - depthY );
-  gfx.lineTo(BTR.x -1, BTR.y);
-  gfx.closePath();
-  gfx.fillPath();
-
-
-  const midY = offsetY + (bottomY - offsetY) * 0.8;
-
-  // ------------------------------------------------------------
-  // ACHTERVLAK (nu ook afgeronde hoeken)
-  // ------------------------------------------------------------
-  gfx.fillStyle(theme.border, hovered ? 0.18 : 0.12);
-  //gfx.fillRoundedRect(BTL.x, BTL.y, frontW, frontH, radius);
-
-  gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
-  gfx.strokeRoundedRect(BTL.x, BTL.y, frontW, frontH, radius);
-
-  // ------------------------------------------------------------
-  // ONDERSTE DEEL RECHTER VLAK — DONKER 
-  // ------------------------------------------------------------
-  
-  // RC -2 hack
-  gfx.fillStyle(bottomColor, 1);
-  gfx.beginPath();
-  gfx.moveTo(FBR.x, FBR.y);
-  gfx.lineTo(FBR.x-2, midY);
-  gfx.lineTo(BBR.x-2, midY - depthY);
-  gfx.lineTo(BBR.x-2, BBR.y);
-  gfx.closePath();
-  gfx.fillPath();
-
+    // Cornervlak / Achtervlak (nog donkerder voor schaduw aan de onder/achterkant)
+    const cornerDarkColor = Phaser.Display.Color.Interpolate.ColorWithColor(
+      baseColor,
+      baseColor.clone().darken(80),
+      100,
+      hovered ? 65 : 45
+    ).color;
 
     // ------------------------------------------------------------
-    // MIDDENSTROOK RECHTERVLAK 
+    // 1. ACHTERVLAK (Basis van de kubus)
     // ------------------------------------------------------------
+    gfx.fillStyle(cornerColor, 1);
+    gfx.fillRoundedRect(backX, backY, frontW, frontH, radius);
 
-    //RC -2 hack
-    gfx.fillStyle(middleColor, 1);
+    // Achtervlak contour
+    gfx.lineStyle(hovered ? 2.6 : 2.0, theme.border, glow);
+    gfx.strokeRoundedRect(backX, backY, frontW, frontH, radius);
+
+    // ------------------------------------------------------------
+    // 2. EXTRUSIE VAN DE DIKTEVLAKKEN (Vullen van de 3D gaten)
+    // ------------------------------------------------------------
+    
+    // Topvlak Extrusie
+    gfx.fillStyle(topColor, 1);
     gfx.beginPath();
-    gfx.moveTo(FTR.x, offsetY);
-    gfx.lineTo(FBR.x-1, midY);
-    gfx.lineTo(BBR.x-1, midY - depthY);
-    gfx.lineTo(BTR.x-1, offsetY - depthY);
+    gfx.moveTo(frontX + radius, frontY);
+    gfx.lineTo(backX + radius, backY);
+    gfx.lineTo(backX + frontW - radius, backY);
+    gfx.lineTo(frontX + frontW - radius, frontY);
     gfx.closePath();
     gfx.fillPath();
 
-  // ------------------------------------------------------------
-  // TOPVLAK (licht)
-  // ------------------------------------------------------------
-  gfx.fillStyle(
-    Phaser.Display.Color.Interpolate.ColorWithColor(
-      Phaser.Display.Color.ValueToColor(theme.bg),
-      Phaser.Display.Color.ValueToColor(theme.bg).darken(90),
-      100,
-      hovered ? 65 : 45
-    ).color,
-    1
-  );
+    // Rechtervlak Extrusie
+    gfx.fillStyle(rightColor, 1);
+    gfx.beginPath();
+    gfx.moveTo(frontX + frontW, frontY + radius);
+    gfx.lineTo(backX + frontW, backY + radius);
+    gfx.lineTo(backX + frontW, backY + frontH - radius);
+    gfx.lineTo(frontX + frontW, frontY + frontH - radius);
+    gfx.closePath();
+    gfx.fillPath();
 
-  gfx.beginPath();
-  gfx.moveTo(FTL_offset.x, FTL.y);
-  gfx.lineTo(FTR_offset_left.x, FTR_offset_left.y+1);
-  gfx.lineTo(BTR.x, BTR_offset_left.y+1);
-  gfx.lineTo(BTL_offset.x, BTL.y+1);
-  gfx.closePath();
-  gfx.fillPath();
+    // NIEUW: Rechtsonder Curve Extrusie (Dicht het gat in de onderste bocht)
+    gfx.fillStyle(cornerDarkColor, 1);
+    gfx.beginPath();
+    gfx.moveTo(frontX + frontW, frontY + frontH - radius);
+    gfx.lineTo(backX + frontW, backY + frontH - radius);
+    gfx.lineTo(backX + frontW - radius, backY + frontH);
+    gfx.lineTo(frontX + frontW - radius, frontY + frontH);
+    gfx.closePath();
+    gfx.fillPath();
 
-  // ------------------------------------------------------------
-  // VOORVLAK (afgeronde hoeken)
-  // ------------------------------------------------------------
-  gfx.fillStyle(theme.bg, 1);
-  gfx.fillRoundedRect(frontX, frontY, frontW, frontH, radius);
+    // ------------------------------------------------------------
+    // 3. VOORVLAK (Dekt de binnenkant van de extrusies af)
+    // ------------------------------------------------------------
+    gfx.fillStyle(theme.bg, 1);
+    gfx.fillRoundedRect(frontX, frontY, frontW, frontH, radius);
 
-  gfx.lineStyle(hovered ? 2.6 : 2.0, theme.border, glow);
-  gfx.strokeRoundedRect(frontX, frontY, frontW, frontH, radius);
+    // ------------------------------------------------------------
+    // 4. CONTOURLIJNEN EN RANDEN (Als laatste overal bovenop)
+    // ------------------------------------------------------------
+    gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
 
-  gfx.lineStyle(hovered ? 2.0 : 1.6, theme.border, hovered ? 0.8 : 0.6);
-  gfx.beginPath();
-  gfx.moveTo(FBR_offset_up.x, FBR_offset_up.y+3);
-  gfx.lineTo(BBR_offset_up.x, BBR_offset_up.y+3);
-  gfx.strokePath();
+    // Schuine verbindingslijnen op de hoekenpunten
+    // Linksboven
+    gfx.beginPath();
+    gfx.moveTo(frontX + radius, frontY);
+    gfx.lineTo(backX + radius, backY);
+    gfx.strokePath();
 
-}
+    // Rechtsonder onderkant bocht
+    gfx.beginPath();
+    gfx.moveTo(frontX + frontW - radius, frontY + frontH);
+    gfx.lineTo(backX + frontW - radius, backY + frontH);
+    gfx.strokePath();
 
-
-
+    // Voorvlak dikke border
+    gfx.lineStyle(hovered ? 2.6 : 2.0, theme.border, glow);
+    gfx.strokeRoundedRect(frontX, frontY, frontW, frontH, radius);
+  }
 
   _getActiveCubeDef(id) {
     const ds = this.scene.defenseSystem;
@@ -795,10 +644,6 @@ _drawCubeFace(gfx, W, H, theme, hovered) {
     if (info?.key) this.scene.defenseSystem?.startPlacing(info.category, info.key);
   }
 
-  // Zet de cube-knoppen terug naar de placeholder-status ('?'), zoals bij
-  // de allereerste keer spelen. Nodig bij (her)start van een game, omdat
-  // UIScene — en dus deze knoppen — actief blijft na een restart en anders
-  // gewoon de laatst getoonde verdedigingen van de vorige sessie zou tonen.
   resetCubeButtons() {
     ['a', 'b', 'c'].forEach(id => {
       const btn = this.elements.cubeBtns?.[id];
@@ -979,57 +824,27 @@ _drawCubeFace(gfx, W, H, theme, hovered) {
   }
 
   _drawSpecialButton(btn) {
-    const W = btn.W, H = btn.H;
-    const d = Math.max(10, Math.round(Math.min(W, H) * 0.16));
-    const faceW = W - d;
-    const faceH = H - d;
-    const faceLeft = -W / 2;
-    const faceTop = -H / 2 + d;
-    const faceRight = W / 2 - d;
     const color = btn.cfg?.color ?? 0x446688;
     const ready = !!btn.ready;
     const hovered = !!btn.hovered;
-    const borderCol = color;
+    
     const faceFill = ready
       ? (hovered ? this._mixColor(color, 0xffffff, 0.28) : this._mixColor(color, 0x000000, 0.68))
       : (hovered ? 0x102446 : 0x081428);
 
-    btn.bg.clear();
-    btn.bg.fillStyle(0x000000, hovered ? 0.32 : 0.24);
-    btn.bg.fillEllipse(-d * 0.15, H / 2 + d * 0.35, W * 0.92, d * 0.9);
+    const theme = {
+      bg: faceFill,
+      border: color
+    };
 
-    btn.bg.fillStyle(borderCol, ready ? hovered ? 0.58 : 0.44 : hovered ? 0.3 : 0.22);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceLeft, faceTop);
-    btn.bg.lineTo(faceLeft + d, -H / 2);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(faceRight, faceTop);
-    btn.bg.closePath();
-    btn.bg.fillPath();
+    // Teken de hoofd-kubusvorm
+    this._drawCubeFace(btn.bg, btn.W, btn.H, theme, hovered, 0.16);
 
-    btn.bg.fillStyle(borderCol, ready ? hovered ? 0.34 : 0.24 : hovered ? 0.17 : 0.12);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceRight, faceTop);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(W / 2, H / 2 - d);
-    btn.bg.lineTo(faceRight, H / 2);
-    btn.bg.closePath();
-    btn.bg.fillPath();
-
-    btn.bg.fillStyle(faceFill, ready ? 0.9 : 0.98);
-    btn.bg.fillRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
-    btn.bg.lineStyle(ready ? hovered ? 3.1 : 2.6 : hovered ? 2 : 1.5, borderCol, ready ? 1 : hovered ? 0.85 : 0.58);
-    btn.bg.strokeRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
-    btn.bg.lineStyle(1.1, borderCol, ready ? 0.62 : 0.36);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceLeft, faceTop);
-    btn.bg.lineTo(faceLeft + d, -H / 2);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(W / 2, H / 2 - d);
-    btn.bg.lineTo(faceRight, H / 2);
-    btn.bg.strokePath();
-
+    // Klok overlay en schaling icon behouden
+    const faceW = btn.W - Math.max(10, Math.round(Math.min(btn.W, btn.H) * 0.16));
+    const faceH = btn.H - Math.max(10, Math.round(Math.min(btn.W, btn.H) * 0.16));
     this._drawSpecialClock(btn, faceW, faceH, color);
+    
     btn.iconT.setAlpha(ready ? 1 : 0.94);
     btn.iconT.setScale(hovered ? 1.1 : 1);
   }
@@ -1082,8 +897,6 @@ _drawCubeFace(gfx, W, H, theme, hovered) {
     gfx.fillPath();
   }
 
-  // Upgrade/Verwijder-knoppen — zelfde visuele stijl als de Special Buttons
-  // (zelfde beveled-hex knopvorm via _mixColor), maar uitsluitend een icoon.
   _buildActionButtons() {
     const L  = this._L();
     const Y  = L.ACTION_BTN_Y;
@@ -1123,54 +936,19 @@ _drawCubeFace(gfx, W, H, theme, hovered) {
   }
 
   _drawActionButtonFace(btn) {
-    const W = btn.W, H = btn.H;
-    const d = Math.max(10, Math.round(Math.min(W, H) * 0.16));
-    const faceW = W - d;
-    const faceH = H - d;
-    const faceLeft  = -W / 2;
-    const faceTop   = -H / 2 + d;
-    const faceRight = W / 2 - d;
-    const color   = btn.color;
+    const color = btn.color;
     const hovered = !!btn.hovered;
+    
     const faceFill = hovered
       ? this._mixColor(color, 0xffffff, 0.28)
       : this._mixColor(color, 0x000000, 0.68);
 
-    btn.bg.clear();
-    btn.bg.fillStyle(0x000000, hovered ? 0.32 : 0.24);
-    btn.bg.fillEllipse(-d * 0.15, H / 2 + d * 0.35, W * 0.92, d * 0.9);
+    const theme = {
+      bg: faceFill,
+      border: color
+    };
 
-    btn.bg.fillStyle(color, hovered ? 0.58 : 0.44);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceLeft, faceTop);
-    btn.bg.lineTo(faceLeft + d, -H / 2);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(faceRight, faceTop);
-    btn.bg.closePath();
-    btn.bg.fillPath();
-
-    btn.bg.fillStyle(color, hovered ? 0.34 : 0.24);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceRight, faceTop);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(W / 2, H / 2 - d);
-    btn.bg.lineTo(faceRight, H / 2);
-    btn.bg.closePath();
-    btn.bg.fillPath();
-
-    btn.bg.fillStyle(faceFill, 0.9);
-    btn.bg.fillRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
-    btn.bg.lineStyle(hovered ? 3.1 : 2.6, color, hovered ? 1 : 0.85);
-    btn.bg.strokeRoundedRect(faceLeft, faceTop, faceW, faceH, 7);
-    btn.bg.lineStyle(1.1, color, hovered ? 0.62 : 0.5);
-    btn.bg.beginPath();
-    btn.bg.moveTo(faceLeft, faceTop);
-    btn.bg.lineTo(faceLeft + d, -H / 2);
-    btn.bg.lineTo(W / 2, -H / 2);
-    btn.bg.lineTo(W / 2, H / 2 - d);
-    btn.bg.lineTo(faceRight, H / 2);
-    btn.bg.strokePath();
-
+    this._drawCubeFace(btn.bg, btn.W, btn.H, theme, hovered, 0.16);
     btn.iconT.setScale(hovered ? 1.1 : 1);
   }
 
@@ -1400,19 +1178,21 @@ _drawCubeFace(gfx, W, H, theme, hovered) {
       });
     });
 
-    // Overslaan-knop — zelfde stijl als "Opnieuw spelen"
+    // Overslaan-knop — getekend via _drawCubeFace
     const sbW = Math.round(240 * L.sx);
     const sbH = Math.round(60 * L.sy);
     const sbY = H/2 + Math.round(180 * L.sy);
     const sbFs = Math.round(20 * L.sy);
 
     const skipBg = this.scene.add.graphics().setDepth(302);
+    
     const drawSkip = (hovered) => {
-      skipBg.clear();
-      skipBg.fillStyle(hovered ? 0x1a3a1a : 0x0a1a0a, 0.97);
-      skipBg.lineStyle(3, hovered ? 0x44ff88 : 0x228844, 1);
-      skipBg.fillRoundedRect(W/2 - sbW/2, sbY - sbH/2, sbW, sbH, 12);
-      skipBg.strokeRoundedRect(W/2 - sbW/2, sbY - sbH/2, sbW, sbH, 12);
+      const theme = {
+        bg: hovered ? 0x1a3a1a : 0x0a1a0a,
+        border: hovered ? 0x44ff88 : 0x228844
+      };
+      // Aanroep van _drawCubeFace met specifieke skip dimensions en een subtielere diepte ratio (0.12)
+      this._drawCubeFace(skipBg, sbW, sbH, theme, hovered, 0.12);
     };
     drawSkip(false);
 
